@@ -1,6 +1,6 @@
 [tools]
+aspire = "latest"
 dotnet = "10.0.400"
-"dotnet:Aspire.Cli" = "latest"
 "dotnet:CsharpRepl" = "latest"
 "dotnet:Csharpier" = "latest"
 "dotnet:dotnet-ef" = "latest"
