@@ -23,15 +23,15 @@ A distributed real-time communication sandbox benchmarking three TUI architectur
 
 ```txt
 src/
-├── Trifold-Chatterbox.AppHost/         # Aspire Orchestrator (service discovery & telemetry)
-├── Trifold-Chatterbox.ServiceDefaults/ # OTel metrics/tracing, health checks
-├── Trifold-Chatterbox.Contracts/       # Protobuf contracts (chat_history.proto)
+├── AppHost/         # Aspire Orchestrator (service discovery & telemetry)
+├── ServiceDefaults/ # OTel metrics/tracing, health checks
+├── Contracts/       # Protobuf contracts (chat_history.proto)
 ├── HubServer/                          # Kestrel host (SignalR /chat + gRPC HistoryService)
 ├── Client.Spectre/                     # Spectre.Console (live canvas / render loop)
 ├── Client.TerminalGui/                 # Terminal.Gui (widget tree, UI-thread marshaling)
 └── Client.Jumbee/                      # Jumbee.Console (differential ANSI frame buffer)
 repl/                                   # dotnet-repl CSX scripts (stretch)
-tests/Trifold-Chatterbox.IntegrationTests/ # Testcontainers + xUnit (stretch)
+tests/IntegrationTests/ # Testcontainers + xUnit (stretch)
 ```
 
 ## UI Implementations
@@ -53,7 +53,7 @@ tests/Trifold-Chatterbox.IntegrationTests/ # Testcontainers + xUnit (stretch)
 ```shell
 dotnet build
 dotnet test
-dotnet run --project src/Trifold-Chatterbox.AppHost
+dotnet run --project <project-name>
 ```
 
 ### Aspire CLI

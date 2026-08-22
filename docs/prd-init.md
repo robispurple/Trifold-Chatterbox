@@ -91,7 +91,7 @@ Trifold-Chatterbox is a distributed real-time communication sandbox designed to 
 ### 4.2 TUI Client Matrix
 
 | Client Project | Paradigm / Mental Model | Rendering Strategy | User Interaction Loop |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Client.Spectre | Streaming / Live Render Loop | `AnsiConsole.Live(table)` background task refresh | Standard `Console.ReadLine()` or key listener |
 | Client.TerminalGui | Object-Oriented Widget Tree | Main UI thread marshaling via `Application.Invoke(...)` | Modal UI event loop with `ListView`, `TextField`, `Button` |
 | Client.Jumbee | Differential ANSI Frame Buffer | Viewport dirty tracking, `screen.RequestRender()` | Direct ANSI escape sequence buffer renderer |
@@ -113,7 +113,7 @@ Trifold-Chatterbox is a distributed real-time communication sandbox designed to 
 ```protobuf
 syntax = "proto3";
 
-option csharp_namespace = "Trifold-Chatterbox.Contracts";
+option csharp_namespace = "Contracts";
 
 package chathistory;
 
@@ -142,22 +142,22 @@ message HistoryMessageResponse {
 
 ## 6. Repository & Project Structure
 
-```
+```txt
 Trifold-Chatterbox/
 ├── Directory.Build.props
 ├── Directory.Packages.props
 ├── Trifold-Chatterbox.sln
 ├── src/
-│   ├── Trifold-Chatterbox.AppHost/              # Aspire Orchestrator
+│   ├── AspireHost/                           # Aspire Orchestrator
 │   │   ├── Program.cs
-│   │   └── Trifold-Chatterbox.AppHost.csproj
-│   ├── Trifold-Chatterbox.ServiceDefaults/     # OpenTelemetry, Health Probes, Metrics
+│   │   └── AspireHost.csproj
+│   ├── ServiceDefaults/                      # OpenTelemetry, Health Probes, Metrics
 │   │   ├── Extensions.cs
-│   │   └── Trifold-Chatterbox.ServiceDefaults.csproj
-│   ├── Trifold-Chatterbox.Contracts/           # Protobuf contracts & Grpc.Tools generated stubs
+│   │   └── ServiceDefaults.csproj
+│   ├── Contracts/                            # Protobuf contracts & Grpc.Tools generated stubs
 │   │   ├── Protos/
 │   │   │   └── chat_history.proto
-│   │   └── Trifold-Chatterbox.Contracts.csproj
+│   │   └── Contracts.csproj
 │   ├── HubServer/                           # Combined SignalR & gRPC Service
 │   │   ├── Hubs/
 │   │   │   └── ChatHub.cs
@@ -177,9 +177,9 @@ Trifold-Chatterbox/
 ├── repl/
 │   └── chat-session.csx                    # Dotnet-Repl Interactive Script
 └── tests/
-    └── Trifold-Chatterbox.IntegrationTests/    # Testcontainers + XUnit
+    └── IntegrationTests/    # Testcontainers + XUnit
         ├── HubIntegrationTests.cs
-        └── Trifold-Chatterbox.IntegrationTests.csproj
+        └── IntegrationTests.csproj
 ```
 
 ---
@@ -193,14 +193,14 @@ Trifold-Chatterbox/
 - Configure `Directory.Packages.props` for Central Package Management (CPM) pinning the initial package set: `Aspire.Hosting.AppHost`, `Microsoft.Extensions.ServiceDiscovery`, `Microsoft.AspNetCore.SignalR.Client`, `Spectre.Console`.
 - Create `HubServer` with `builder.Services.AddSignalR()` and `app.MapHub<ChatHub>("/chat")` only — no gRPC yet.
 - Create `Client.Spectre` with `HubConnectionBuilder.WithUrl(hubUrl).WithAutomaticReconnect().Build()`, bound to `ReceiveMessage`, rendering via `AnsiConsole.Live(table)`.
-- Create `Trifold-Chatterbox.AppHost` and `Trifold-Chatterbox.ServiceDefaults`; wire HubServer and Client.Spectre into `DistributedApplication.CreateBuilder`, with the client referencing the hub via `.WithReference(hub)`.
+- Create `AppHost` and `ServiceDefaults`; wire HubServer and Client.Spectre into `DistributedApplication.CreateBuilder`, with the client referencing the hub via `.WithReference(hub)`.
 - **Learning focus:** SignalR hub lifecycle, connection negotiation, group broadcast; Aspire project wiring and dashboard basics.
 
 ### Milestone 2: Add gRPC History Streaming
 
 *Goal: understand gRPC server streaming and see it alongside SignalR in the same dashboard.*
 
-- Create `Trifold-Chatterbox.Contracts` and configure `chat_history.proto` with `<Protobuf Include="Protos\chat_history.proto"/>`.
+- Create `Contracts` and configure `chat_history.proto` with `<Protobuf Include="Protos\chat_history.proto"/>`.
 - Add `Grpc.AspNetCore` and `Grpc.Net.Client` to CPM.
 - Implement `HistoryServiceImpl` backed by an in-memory bounded `ConcurrentQueue<HistoryMessageResponse>`; register with `builder.Services.AddGrpc()` and `app.MapGrpcService<HistoryServiceImpl>()`.
 - Update `Client.Spectre` to open a `GrpcChannel.ForAddress(hubUrl)`, call `GetRecentMessages()` on startup, and populate the render buffer with history before subscribing to live SignalR events.
@@ -232,7 +232,7 @@ Trifold-Chatterbox/
 ### Milestone 6 (Stretch): Hermetic Integration Testing
 
 - Add `Testcontainers` to CPM.
-- Build an integration test suite (`Trifold-Chatterbox.IntegrationTests`) that spins up HubServer in a container and verifies multi-client message delivery and gRPC stream completion under load via `dotnet test`.
+- Build an integration test suite (`IntegrationTests`) that spins up HubServer in a container and verifies multi-client message delivery and gRPC stream completion under load via `dotnet test`.
 - **Learning focus:** hermetic test design, container lifecycle management from test code.
 
 ---
