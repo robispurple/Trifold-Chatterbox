@@ -10,6 +10,12 @@ Mise is used for controlling versions of our tooling.
 mise install
 ```
 
+If Mise has issues with Aspire use Winget
+
+```pwsh
+winget install Microsoft.Aspire      
+```
+
 ## Agents Folder Setup
 
 ```pwsh
