@@ -1,6 +1,0 @@
-[tools]
-aspire = "13.5.2"
-dotnet = "10.0.400"
-"dotnet:CsharpRepl" = "latest"
-"dotnet:Csharpier" = "latest"
-"dotnet:dotnet-ef" = "latest"
