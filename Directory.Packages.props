@@ -4,7 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Aspire & Orchestration -->
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.5.2" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.9.0" />
 
