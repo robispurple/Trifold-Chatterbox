@@ -1,3 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.Build().Run();
+var hubServer = builder.AddProject<Projects.HubServer>("hubserver");
+
+builder.AddProject<Projects.Client_Spectre>("client-spectre")
+    .WithReference(hubServer);
+
+await builder.Build().RunAsync();

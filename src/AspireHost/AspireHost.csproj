@@ -1,6 +1,7 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.5.2">
 
   <ItemGroup>
+    <ProjectReference Include="..\Client.Spectre\Client.Spectre.csproj" />
     <ProjectReference Include="..\HubServer\HubServer.csproj" />
   </ItemGroup>
 
