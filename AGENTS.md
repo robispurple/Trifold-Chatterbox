@@ -23,15 +23,15 @@ A distributed real-time communication sandbox benchmarking three TUI architectur
 
 ```txt
 src/
-├── AppHost/         # Aspire Orchestrator (service discovery & telemetry)
-├── ServiceDefaults/ # OTel metrics/tracing, health checks
-├── Contracts/       # Protobuf contracts (chat_history.proto)
-├── HubServer/                          # Kestrel host (SignalR /chat + gRPC HistoryService)
-├── Client.Spectre/                     # Spectre.Console (live canvas / render loop)
-├── Client.TerminalGui/                 # Terminal.Gui (widget tree, UI-thread marshaling)
-└── Client.Jumbee/                      # Jumbee.Console (differential ANSI frame buffer)
-repl/                                   # dotnet-repl CSX scripts (stretch)
-tests/IntegrationTests/ # Testcontainers + xUnit (stretch)
+├── AspireHost/        # Aspire Orchestrator (service discovery & telemetry)
+├── ServiceDefaults/   # OTel metrics/tracing, health checks (shared class library)
+├── Contracts/         # Protobuf contracts (chat_history.proto)
+├── HubServer/         # Kestrel host (SignalR /chat + gRPC HistoryService)
+├── Client.Spectre/    # Spectre.Console (live canvas / render loop)
+├── Client.TerminalGui/# Terminal.Gui (widget tree, UI-thread marshaling)
+└── Client.Jumbee/     # Jumbee.Console (differential ANSI frame buffer)
+repl/                  # dotnet-repl CSX scripts (stretch)
+tests/IntegrationTests/# Testcontainers + xUnit (stretch)
 ```
 
 ## UI Implementations
@@ -53,17 +53,51 @@ tests/IntegrationTests/ # Testcontainers + xUnit (stretch)
 ```shell
 dotnet build
 dotnet test
-dotnet run --project <project-name>
+
+# Run full Aspire orchestration stack locally
+dotnet run --project src/AspireHost
+
+# Run services individually
+dotnet run --project src/HubServer
+dotnet run --project src/Client.Spectre
 ```
 
 ### Aspire CLI
 
 ```shell
 aspire -h
-# Get resources if needed; but usually just use the rebuild command below
+# Get resources
 aspire ps
-# Avoid restarting the full stack; just rebuild the server
+# Rebuild a specific resource
 aspire resource <resource-name> rebuild
+```
+
+### Docker & Container Tooling
+
+Both `HubServer` and `Client.Spectre` support .NET SDK container publishing and Docker Compose orchestration on the `chatterbox-net` network.
+
+```shell
+# Build container images with .NET SDK
+dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
+dotnet publish src/Client.Spectre/Client.Spectre.csproj -t:PublishContainer
+
+# Or build via Docker Compose
+docker compose build
+
+# Start the containerized stack in the background
+docker compose up -d
+
+# Interactive TUI session with Client.Spectre (Recommended)
+docker compose run --rm client-spectre
+
+# Attach to the running background Client.Spectre container
+docker attach chatterbox-client-spectre
+
+# Exec into container / spawn a new client process
+docker exec -it chatterbox-client-spectre dotnet Client.Spectre.dll
+
+# Stop container stack
+docker compose down
 ```
 
 ### Playwright MCP
@@ -71,3 +105,4 @@ aspire resource <resource-name> rebuild
 Use the Playwright MCP to run the app in a browser and test the UI.
 
 For UI work, get access first thing **before** you start!
+
