@@ -1,0 +1,65 @@
+services:
+  hubserver:
+    image: trifold/hubserver:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/HubServer/HubServer.csproj", "src/HubServer/"]
+        RUN dotnet restore "src/HubServer/HubServer.csproj"
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/HubServer/ src/HubServer/
+        RUN dotnet publish "src/HubServer/HubServer.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENV ASPNETCORE_URLS=http://+:8080
+        EXPOSE 8080
+        ENTRYPOINT ["dotnet", "HubServer.dll"]
+    container_name: chatterbox-hubserver
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - chatterbox-net
+
+  client-spectre:
+    image: trifold/client-spectre:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/Client.Spectre/Client.Spectre.csproj", "src/Client.Spectre/"]
+        RUN dotnet restore "src/Client.Spectre/Client.Spectre.csproj"
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/Client.Spectre/ src/Client.Spectre/
+        RUN dotnet publish "src/Client.Spectre/Client.Spectre.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENTRYPOINT ["dotnet", "Client.Spectre.dll"]
+    container_name: chatterbox-client-spectre
+    stdin_open: true
+    tty: true
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - HubServerUrl=http://hubserver:8080
+    depends_on:
+      - hubserver
+    networks:
+      - chatterbox-net
+
+networks:
+  chatterbox-net:
+    driver: bridge
+
