@@ -1,4 +1,19 @@
 services:
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13
+    container_name: chatterbox-dashboard
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+    environment:
+      - ASPNETCORE_URLS=http://+:18888
+      - DOTNET_DASHBOARD_OTLP_ENDPOINT_URL=http://+:18889
+      # - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+      - DASHBOARD__OTLP__AUTHMODE=Unsecured
+      - DASHBOARD__FRONTEND__AUTHMODE=Unsecured
+    networks:
+      - chatterbox-net
+
   hubserver:
     image: trifold/hubserver:latest
     build:
@@ -17,7 +32,7 @@ services:
         FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
         WORKDIR /app
         COPY --from=build /app/publish .
-        ENV ASPNETCORE_URLS=http://+:8080
+        ENV ASPNETCORE_HTTP_PORTS=8080
         EXPOSE 8080
         ENTRYPOINT ["dotnet", "HubServer.dll"]
     container_name: chatterbox-hubserver
@@ -25,7 +40,12 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_HTTP_PORTS=8080
+      - OTEL_SERVICE_NAME=HubServer
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      - aspire-dashboard
     networks:
       - chatterbox-net
 
@@ -54,12 +74,15 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - HubServerUrl=http://hubserver:8080
+      - OTEL_SERVICE_NAME=Client.Spectre
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
       - hubserver
+      - aspire-dashboard
     networks:
       - chatterbox-net
 
 networks:
   chatterbox-net:
     driver: bridge
-

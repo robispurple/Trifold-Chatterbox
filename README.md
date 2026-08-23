@@ -47,7 +47,7 @@ docker compose build
 .\scripts\launch-terminals.ps1 -Docker
 ```
 
-*Result: Automatically starts `hubserver` on `chatterbox-net` and opens 3 tiled Windows Terminal panes, each running an isolated container instance (`Alice`, `Bob`, `Charlie`).*
+*Result: Automatically starts `hubserver` and the `aspire-dashboard` (open `http://localhost:18888` in your browser to view live OTel traces) on `chatterbox-net` and opens 3 tiled Windows Terminal panes, each running an isolated container instance (`Alice`, `Bob`, `Charlie`).*
 
 ---
 

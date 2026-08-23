@@ -11,12 +11,17 @@ $rootDir = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $names = @("Alice", "Bob", "Charlie")
 
 if ($Docker) {
-    Write-Host "Starting Docker HubServer backend..." -ForegroundColor Cyan
-    docker compose -f "$rootDir\docker-compose.yml" up -d hubserver
+    Write-Host "Cleaning up previous client containers..." -ForegroundColor Yellow
+    # Remove any existing client containers to prevent accumulation
+    docker ps -a -q --filter "name=chatterbox-client-" | ForEach-Object { docker rm -f $_ } 2>$null
+    docker ps -a -q --filter "ancestor=trifold/client-spectre:latest" | ForEach-Object { docker rm -f $_ } 2>$null
 
-    $cmd1 = "docker compose run --rm -e CHAT_USERNAME=$($names[0]) client-spectre"
-    $cmd2 = "docker compose run --rm -e CHAT_USERNAME=$($names[1]) client-spectre"
-    $cmd3 = "docker compose run --rm -e CHAT_USERNAME=$($names[2]) client-spectre"
+    Write-Host "Starting Docker HubServer backend & Aspire Dashboard..." -ForegroundColor Cyan
+    docker compose -f "$rootDir\docker-compose.yml" up -d hubserver aspire-dashboard
+
+    $cmd1 = "docker compose run --rm --name chatterbox-client-alice -e CHAT_USERNAME=$($names[0]) client-spectre"
+    $cmd2 = "docker compose run --rm --name chatterbox-client-bob -e CHAT_USERNAME=$($names[1]) client-spectre"
+    $cmd3 = "docker compose run --rm --name chatterbox-client-charlie -e CHAT_USERNAME=$($names[2]) client-spectre"
 
     $wtArgs = @(
         "-w", "0",
