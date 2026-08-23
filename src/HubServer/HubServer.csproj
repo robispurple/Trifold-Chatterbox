@@ -4,6 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Container Publishing -->
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <ContainerRepository>trifold/hubserver</ContainerRepository>
+    <ContainerImageTags>latest</ContainerImageTags>
   </PropertyGroup>
 
   <ItemGroup>
