@@ -3,6 +3,12 @@ using Microsoft.Extensions.Hosting;
 using ServiceDefaults;
 using Spectre.Console;
 
+var defaultUsername = Environment.GetEnvironmentVariable("CHAT_USERNAME") ?? $"User_{Random.Shared.Next(1000, 9999)}";
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME")))
+{
+    Environment.SetEnvironmentVariable("OTEL_SERVICE_NAME", $"Client.Spectre.{defaultUsername}");
+}
+
 var hostBuilder = Host.CreateApplicationBuilder(args);
 hostBuilder.AddServiceDefaults();
 var host = hostBuilder.Build();
