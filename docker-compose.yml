@@ -1,0 +1,88 @@
+services:
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13
+    container_name: chatterbox-dashboard
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+    environment:
+      - ASPNETCORE_URLS=http://+:18888
+      - DOTNET_DASHBOARD_OTLP_ENDPOINT_URL=http://+:18889
+      # - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+      - DASHBOARD__OTLP__AUTHMODE=Unsecured
+      - DASHBOARD__FRONTEND__AUTHMODE=Unsecured
+    networks:
+      - chatterbox-net
+
+  hubserver:
+    image: trifold/hubserver:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/HubServer/HubServer.csproj", "src/HubServer/"]
+        RUN dotnet restore "src/HubServer/HubServer.csproj"
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/HubServer/ src/HubServer/
+        RUN dotnet publish "src/HubServer/HubServer.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENV ASPNETCORE_HTTP_PORTS=8080
+        EXPOSE 8080
+        ENTRYPOINT ["dotnet", "HubServer.dll"]
+    container_name: chatterbox-hubserver
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - OTEL_SERVICE_NAME=HubServer
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      - aspire-dashboard
+    networks:
+      - chatterbox-net
+
+  client-spectre:
+    image: trifold/client-spectre:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/Client.Spectre/Client.Spectre.csproj", "src/Client.Spectre/"]
+        RUN dotnet restore "src/Client.Spectre/Client.Spectre.csproj"
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/Client.Spectre/ src/Client.Spectre/
+        RUN dotnet publish "src/Client.Spectre/Client.Spectre.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENTRYPOINT ["dotnet", "Client.Spectre.dll"]
+    container_name: chatterbox-client-spectre
+    stdin_open: true
+    tty: true
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - HubServerUrl=http://hubserver:8080
+      - OTEL_SERVICE_NAME=Client.Spectre
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      - hubserver
+      - aspire-dashboard
+    networks:
+      - chatterbox-net
+
+networks:
+  chatterbox-net:
+    driver: bridge
