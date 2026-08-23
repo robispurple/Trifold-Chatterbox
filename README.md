@@ -192,3 +192,20 @@ docker compose down
 - **Run tests:** `dotnet test`
 - **Check HubServer Health:** `curl http://localhost:5000/alive` (or `http://localhost:5000/health`)
 - **Aspire Telemetry:** Check the Aspire dashboard URL printed upon `dotnet run --project src/AspireHost` for live traces, metrics, and structured logs.
+
+---
+
+## Troubleshooting & Tips
+
+### Port 5000 in Use (`Address already in use`)
+Both the local `HubServer` (started by `AspireHost`) and the Docker Compose `hubserver` container expose port `5000`. If you previously started the Docker backend and want to switch back to local `AspireHost`:
+```pwsh
+# Free up port 5000 by stopping Docker containers
+docker compose down
+```
+
+### Telemetry Differentiation in Aspire Dashboard
+Each `Client.Spectre` instance automatically names its OpenTelemetry service after its username (e.g. `Client.Spectre.Alice`, `Client.Spectre.Bob`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
+
+### Hybrid Mode (Local AspireHost + Docker Clients)
+You can run `dotnet run --project src/AspireHost` on your host machine to get the full .NET 10 Aspire Dashboard, and then run `.\scripts\launch-terminals.ps1 -Docker`. The script will detect the local host backend and seamlessly connect the containerized clients via `host.docker.internal:5000`.
