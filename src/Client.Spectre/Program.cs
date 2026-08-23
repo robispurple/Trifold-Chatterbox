@@ -75,7 +75,6 @@ catch (Exception ex)
     AnsiConsole.MarkupLine($"[bold red]✕ Failed to connect to hub:[/] {Markup.Escape(ex.Message)}");
 }
 
-var defaultUsername = Environment.GetEnvironmentVariable("CHAT_USERNAME") ?? $"User_{Random.Shared.Next(1000, 9999)}";
 string username;
 
 if (!Console.IsInputRedirected)
