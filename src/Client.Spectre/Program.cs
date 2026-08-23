@@ -69,33 +69,57 @@ catch (Exception ex)
     AnsiConsole.MarkupLine($"[bold red]✕ Failed to connect to hub:[/] {Markup.Escape(ex.Message)}");
 }
 
-var defaultUsername = $"User_{Random.Shared.Next(1000, 9999)}";
-var username = AnsiConsole.Ask<string>("[bold]Enter your display name:[/] ", defaultUsername);
+var defaultUsername = Environment.GetEnvironmentVariable("CHAT_USERNAME") ?? $"User_{Random.Shared.Next(1000, 9999)}";
+string username;
 
-AnsiConsole.MarkupLine($"[dim]Welcome, [bold]{Markup.Escape(username)}[/]! Type a message and hit Enter. Type [red]/quit[/] to exit.[/]\n");
-
-while (true)
+if (!Console.IsInputRedirected)
 {
-    var input = Console.ReadLine();
-    if (string.IsNullOrWhiteSpace(input))
-    {
-        continue;
-    }
+    username = AnsiConsole.Ask<string>("[bold]Enter your display name:[/] ", defaultUsername);
+    AnsiConsole.MarkupLine($"[dim]Welcome, [bold]{Markup.Escape(username)}[/]! Type a message and hit Enter. Type [red]/quit[/] to exit.[/]\n");
 
-    if (string.Equals(input.Trim(), "/quit", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(input.Trim(), "/exit", StringComparison.OrdinalIgnoreCase))
+    while (true)
     {
-        break;
-    }
+        var input = Console.ReadLine();
+        if (input == null)
+        {
+            break;
+        }
 
-    try
-    {
-        await connection.InvokeAsync("SendMessage", username, "Spectre", input);
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            continue;
+        }
+
+        if (string.Equals(input.Trim(), "/quit", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(input.Trim(), "/exit", StringComparison.OrdinalIgnoreCase))
+        {
+            break;
+        }
+
+        try
+        {
+            await connection.InvokeAsync("SendMessage", username, "Spectre", input);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[bold red]✕ Failed to send message:[/] {Markup.Escape(ex.Message)}");
+        }
     }
-    catch (Exception ex)
+}
+else
+{
+    username = defaultUsername;
+    AnsiConsole.MarkupLine($"[dim]Non-interactive / background mode detected. Registered as [bold cyan]{Markup.Escape(username)}[/]. Listening for messages...[/]\n");
+
+    var tcs = new TaskCompletionSource();
+    AppDomain.CurrentDomain.ProcessExit += (_, _) => tcs.TrySetResult();
+    Console.CancelKeyPress += (_, e) =>
     {
-        AnsiConsole.MarkupLine($"[bold red]✕ Failed to send message:[/] {Markup.Escape(ex.Message)}");
-    }
+        e.Cancel = true;
+        tcs.TrySetResult();
+    };
+
+    await tcs.Task;
 }
 
 await connection.StopAsync();
