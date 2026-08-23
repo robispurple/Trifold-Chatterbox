@@ -2,22 +2,18 @@
 
 A distributed real-time communication sandbox benchmarking three TUI architectures against a hybrid SignalR + gRPC .NET 10 backend orchestrated with .NET Aspire.
 
+For full developer workflows, setup, and container guides, see [README.md](README.md).
+
 ## Tech Stack & Language Conventions
 
-- **Platform:** .NET 10, C# 14
-- **Language Rules:**
-  - When generating new C# code, please follow the existing coding style.
-  - All code should be compatible with C# 14.0.
-  - Prefer new C# 14.0 features and syntax where applicable.
-  - Prefer functional programming paradigms and constructs where appropriate.
-  - Prefer concise code over more verbose constructs.
-- **Coding Style:**
-  - Use the existing #regions in a file to organize class constructors, indexers, events, properties, methods, fields, and child types.
-  - Use 4 spaces for indentation.
-  - Use camel-case for method and property names. Method and property names should begin with a capital letter.
-  - Use camel-case for class fields. Field names should begin with lower-case letters unless they are backing fields for properties which should begin with an underscore.
+- **Platform:** .NET 10, C# 14.0
 - **Package Management:** Central Package Management (CPM) via `Directory.Packages.props`.
-
+- **Language & Style Rules:**
+  - Follow existing coding style and preserve `#region` organization (constructors, properties, methods, fields).
+  - Indentation: 4 spaces.
+  - Method and property names: PascalCase (`CamelCase` with leading capital).
+  - Fields: camelCase (backing fields prefixed with `_`).
+  - Prefer modern C# 14 features, functional paradigms, and concise constructs.
 
 ## Project Structure
 
@@ -30,79 +26,22 @@ src/
 ├── Client.Spectre/    # Spectre.Console (live canvas / render loop)
 ├── Client.TerminalGui/# Terminal.Gui (widget tree, UI-thread marshaling)
 └── Client.Jumbee/     # Jumbee.Console (differential ANSI frame buffer)
-repl/                  # dotnet-repl CSX scripts (stretch)
-tests/IntegrationTests/# Testcontainers + xUnit (stretch)
+scripts/               # Automated multi-client launch scripts (launch-terminals.ps1)
 ```
 
-## UI Implementations
+## Protocol & Architecture
 
-- Spectre.Console <https://spectreconsole.net/console/>
-- Terminal.Gui <https://github.com/tui-cs/Terminal.Gui/blob/develop/llms.txt>
-- Jumbee.Console <https://github.com/allisterb/Jumbee.Console/blob/master/llms.txt>
+- **SignalR (`/chat`):** Ephemeral, high-frequency bidirectional live push (`SendMessage` / `ReceiveMessage`).
+- **gRPC (`HistoryService`):** Contract-first HTTP/2 server streaming (`GetRecentMessages`) for history replay on boot.
+- **Service Discovery:** Resolved dynamically via Aspire (`services:hubserver:http` / `services:hubserver:https`) or fallback `HubServerUrl`.
 
-## Protocol & Interaction Model
-
-- **SignalR (`/chat`):** Ephemeral, high-frequency bidirectional live push (`SendMessage` invocation, `ReceiveMessage` event).
-- **gRPC (`HistoryService`):** Contract-first HTTP/2 server streaming (`GetRecentMessages`) for history replay on client boot.
-- **Client Lifecycle:** Connect via gRPC to stream history -> establish SignalR connection for live messages -> render via TUI engine.
-
-## Tooling & Commands
-
-### .NET CLI
+## Essential Commands
 
 ```shell
-dotnet build
-dotnet test
-
-# Run full Aspire orchestration stack locally
-dotnet run --project src/AspireHost
-
-# Run services individually
-dotnet run --project src/HubServer
-dotnet run --project src/Client.Spectre
+dotnet build                                    # Build solution
+dotnet test                                     # Run tests
+dotnet run --project src/AspireHost             # Launch full Aspire stack
+dotnet run --project src/HubServer              # Run HubServer standalone
+dotnet run --project src/Client.Spectre         # Run Spectre client standalone
+.\scripts\launch-terminals.ps1 [-Docker]        # Launch 3-client split-pane session
 ```
-
-### Aspire CLI
-
-```shell
-aspire -h
-# Get resources
-aspire ps
-# Rebuild a specific resource
-aspire resource <resource-name> rebuild
-```
-
-### Docker & Container Tooling
-
-Both `HubServer` and `Client.Spectre` support .NET SDK container publishing and Docker Compose orchestration on the `chatterbox-net` network.
-
-```shell
-# Build container images with .NET SDK
-dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
-dotnet publish src/Client.Spectre/Client.Spectre.csproj -t:PublishContainer
-
-# Or build via Docker Compose
-docker compose build
-
-# Start the containerized stack in the background
-docker compose up -d
-
-# Interactive TUI session with Client.Spectre (Recommended)
-docker compose run --rm client-spectre
-
-# Attach to the running background Client.Spectre container
-docker attach chatterbox-client-spectre
-
-# Exec into container / spawn a new client process
-docker exec -it chatterbox-client-spectre dotnet Client.Spectre.dll
-
-# Stop container stack
-docker compose down
-```
-
-### Playwright MCP
-
-Use the Playwright MCP to run the app in a browser and test the UI.
-
-For UI work, get access first thing **before** you start!
-

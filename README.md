@@ -4,6 +4,51 @@ A distributed real-time communication sandbox designed to explore, benchmark, an
 
 ---
 
+## Fresh Clone Quickstart: Step-by-Step
+
+Follow either the **Native .NET** or **Docker Container** workflow below to go from a brand new `git clone` to a running 3-terminal split-pane chat session in seconds.
+
+### Workflow A: Native .NET (Fastest for Local Dev)
+
+```pwsh
+# 1. Clone the repository
+git clone https://github.com/robispurple/Trifold-Chatterbox.git
+cd Trifold-Chatterbox
+
+# 2. Install tooling dependencies (Mise / Winget)
+mise install
+# Or: winget install Microsoft.Aspire
+
+# 3. Build the entire solution
+dotnet build
+
+# 4. Start the Aspire orchestrator backend in Terminal 1
+dotnet run --project src/AspireHost
+
+# 5. In a new PowerShell terminal, launch the 3-client split-pane session
+.\scripts\launch-terminals.ps1
+```
+*Result: Windows Terminal opens with 3 tiled panes (`Alice`, `Bob`, and `Charlie`) connected to the live SignalR hub.*
+
+---
+
+### Workflow B: Docker Containers (Hermetic & Isolated)
+
+```pwsh
+# 1. Clone the repository
+git clone https://github.com/robispurple/Trifold-Chatterbox.git
+cd Trifold-Chatterbox
+
+# 2. Ensure Docker Desktop is running, then build container images
+docker compose build
+
+# 3. Launch the 3-container split-pane session
+.\scripts\launch-terminals.ps1 -Docker
+```
+*Result: Automatically starts `hubserver` on `chatterbox-net` and opens 3 tiled Windows Terminal panes, each running an isolated container instance (`Alice`, `Bob`, `Charlie`).*
+
+---
+
 ## Tooling Prerequisites & Setup
 
 Mise is used for controlling versions of our tooling:
@@ -12,7 +57,7 @@ Mise is used for controlling versions of our tooling:
 mise install
 ```
 
-If Mise has issues with Aspire, use Winget:
+If Mise has issues with Aspire, install via Winget:
 
 ```pwsh
 winget install Microsoft.Aspire
@@ -24,7 +69,7 @@ winget install Microsoft.Aspire
 
 ### 1. Aspire Orchestrator (Recommended for Local Dev)
 
-Runs the full distributed stack (`HubServer` and `Client.Spectre`) with automatic service discovery and OpenTelemetry dashboard:
+Runs the full distributed stack (`HubServer` and `Client.Spectre`) with automatic service discovery and the Aspire OpenTelemetry dashboard:
 
 ```pwsh
 # Launch with .NET CLI
@@ -34,7 +79,23 @@ dotnet run --project src/AspireHost
 aspire start
 ```
 
-### 2. Running Services Individually (.NET CLI)
+### 2. Multi-Client 3-Terminal Sandbox (One-Command Testing)
+
+To immediately launch **3 interactive Spectre.Console clients** side-by-side in Windows Terminal (`Alice`, `Bob`, and `Charlie`) connected to the hub:
+
+```pwsh
+# Native .NET Mode (connects to running Aspire or HubServer):
+.\scripts\launch-terminals.ps1
+
+# Docker Container Mode (runs 3 docker containers connected over chatterbox-net):
+.\scripts\launch-terminals.ps1 -Docker
+```
+
+*Tip: When running `AspireHost`, you can also click the **"Launch 3 Interactive Terminals"** button directly on the `client-spectre` resource in the Aspire Web Dashboard!*
+
+---
+
+### 3. Running Services Individually (.NET CLI)
 
 You can launch each service standalone in separate terminals:
 
@@ -56,9 +117,14 @@ Both `HubServer` and `Client.Spectre` are configured with .NET built-in containe
 
 ### 1. Build Container Images
 
-You can build the container images via .NET SDK or Docker:
+You can build the container images via Docker Compose or .NET SDK:
 
-**Option A: Using .NET SDK Container Publishing**
+**Option A: Using Docker Compose Build (Recommended)**
+```pwsh
+docker compose build
+```
+
+**Option B: Using .NET SDK Container Publishing**
 ```pwsh
 # Build HubServer container image (trifold/hubserver:latest)
 dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
@@ -67,19 +133,13 @@ dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
 dotnet publish src/Client.Spectre/Client.Spectre.csproj -t:PublishContainer
 ```
 
-**Option B: Using Docker Compose Build**
-```pwsh
-docker compose build
-```
-
 ---
 
 ### 2. Start the Containerized Stack
 
-Start the backend services on the shared `chatterbox-net` network:
+Start the backend services in the background on the shared `chatterbox-net` network:
 
 ```pwsh
-# Start all containers in the background
 docker compose up -d
 ```
 
