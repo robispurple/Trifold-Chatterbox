@@ -11,6 +11,8 @@ await host.StartAsync();
 var configuration = hostBuilder.Configuration;
 var hubBaseUrl = configuration["services:hubserver:http:0"]
     ?? configuration["services:hubserver:https:0"]
+    ?? configuration["services:hubserver:http"]
+    ?? configuration["services:hubserver:https"]
     ?? configuration["HubServerUrl"]
     ?? "http://localhost:5000";
 
