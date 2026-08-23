@@ -6,14 +6,19 @@ For full developer workflows, setup, and container guides, see [README.md](READM
 
 ## Tech Stack & Language Conventions
 
-- **Platform:** .NET 10, C# 14.0
+- **Platform:** .NET 10, C# 14
+- **Language Rules:**
+  - When generating new C# code, please follow the existing coding style.
+  - All code should be compatible with C# 14.0.
+  - Prefer new C# 14.0 features and syntax where applicable.
+  - Prefer functional programming paradigms and constructs where appropriate.
+  - Prefer concise code over more verbose constructs.
+- **Coding Style:**
+  - Use the existing #regions in a file to organize class constructors, indexers, events, properties, methods, fields, and child types.
+  - Use 4 spaces for indentation.
+  - Use camel-case for method and property names. Method and property names should begin with a capital letter.
+  - Use camel-case for class fields. Field names should begin with lower-case letters unless they are backing fields for properties which should begin with an underscore.
 - **Package Management:** Central Package Management (CPM) via `Directory.Packages.props`.
-- **Language & Style Rules:**
-  - Follow existing coding style and preserve `#region` organization (constructors, properties, methods, fields).
-  - Indentation: 4 spaces.
-  - Method and property names: PascalCase (`CamelCase` with leading capital).
-  - Fields: camelCase (backing fields prefixed with `_`).
-  - Prefer modern C# 14 features, functional paradigms, and concise constructs.
 
 ## Project Structure
 
@@ -26,6 +31,8 @@ src/
 ├── Client.Spectre/    # Spectre.Console (live canvas / render loop)
 ├── Client.TerminalGui/# Terminal.Gui (widget tree, UI-thread marshaling)
 └── Client.Jumbee/     # Jumbee.Console (differential ANSI frame buffer)
+repl/                  # dotnet-repl CSX scripts (stretch)
+tests/IntegrationTests/# Testcontainers + xUnit (stretch)
 scripts/               # Automated multi-client launch scripts (launch-terminals.ps1)
 ```
 
@@ -45,3 +52,9 @@ dotnet run --project src/HubServer              # Run HubServer standalone
 dotnet run --project src/Client.Spectre         # Run Spectre client standalone
 .\scripts\launch-terminals.ps1 [-Docker]        # Launch 3-client split-pane session
 ```
+
+### Playwright MCP
+
+Use the Playwright MCP to run the app in a browser and test the UI.
+
+For UI work, get access first thing **before** you start!

@@ -28,6 +28,7 @@ dotnet run --project src/AspireHost
 # 5. In a new PowerShell terminal, launch the 3-client split-pane session
 .\scripts\launch-terminals.ps1
 ```
+
 *Result: Windows Terminal opens with 3 tiled panes (`Alice`, `Bob`, and `Charlie`) connected to the live SignalR hub.*
 
 ---
@@ -45,6 +46,7 @@ docker compose build
 # 3. Launch the 3-container split-pane session
 .\scripts\launch-terminals.ps1 -Docker
 ```
+
 *Result: Automatically starts `hubserver` on `chatterbox-net` and opens 3 tiled Windows Terminal panes, each running an isolated container instance (`Alice`, `Bob`, `Charlie`).*
 
 ---
@@ -100,11 +102,13 @@ To immediately launch **3 interactive Spectre.Console clients** side-by-side in 
 You can launch each service standalone in separate terminals:
 
 **Terminal 1 — HubServer:**
+
 ```pwsh
 dotnet run --project src/HubServer
 ```
 
 **Terminal 2 — Client.Spectre:**
+
 ```pwsh
 dotnet run --project src/Client.Spectre
 ```
@@ -120,11 +124,13 @@ Both `HubServer` and `Client.Spectre` are configured with .NET built-in containe
 You can build the container images via Docker Compose or .NET SDK:
 
 **Option A: Using Docker Compose Build (Recommended)**
+
 ```pwsh
 docker compose build
 ```
 
 **Option B: Using .NET SDK Container Publishing**
+
 ```pwsh
 # Build HubServer container image (trifold/hubserver:latest)
 dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
@@ -150,18 +156,22 @@ docker compose up -d
 Because `Client.Spectre` is an interactive console application:
 
 **Method 1 — Launch a dedicated interactive TUI session (Recommended):**
+
 ```pwsh
 docker compose run --rm client-spectre
 ```
 
 **Method 2 — Attach to the background client container:**
+
 ```pwsh
 # Attach directly to the running container's TTY and STDIN
 docker attach chatterbox-client-spectre
 ```
+
 *(To detach without stopping the container, press `Ctrl+P`, then `Ctrl+Q`)*
 
 **Method 3 — Spawn a new shell or second client instance:**
+
 ```pwsh
 docker exec -it chatterbox-client-spectre dotnet Client.Spectre.dll
 ```
