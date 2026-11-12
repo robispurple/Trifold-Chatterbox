@@ -13,7 +13,7 @@ builder.AddProject<Projects.Client_Spectre>("client-spectre")
         {
             string scriptPath = Path.GetFullPath("../../scripts/launch-terminals.ps1");
             var psi = new System.Diagnostics.ProcessStartInfo
-            {
+            {   
                 FileName = "pwsh.exe",
                 Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\"",
                 UseShellExecute = false
