@@ -13,7 +13,7 @@ builder.AddProject<Projects.Client_Spectre>("client-spectre")
         {
             string scriptPath = Path.GetFullPath("../../scripts/launch-terminals.ps1");
             var psi = new System.Diagnostics.ProcessStartInfo
-            {   
+            {
                 FileName = "pwsh.exe",
                 Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\"",
                 UseShellExecute = false
@@ -21,11 +21,13 @@ builder.AddProject<Projects.Client_Spectre>("client-spectre")
             string userPath = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
             string machinePath = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Machine) ?? "";
             psi.EnvironmentVariables["Path"] = $"{userPath};{machinePath}";
-
             System.Diagnostics.Process.Start(psi);
             return Task.FromResult(new ExecuteCommandResult { Success = true });
         },
-        iconName: "WindowDevTools",
-        iconVariant: IconVariant.Filled);
+        commandOptions: new CommandOptions
+        {
+            IconName = "WindowDevTools",
+            IconVariant = IconVariant.Filled
+        });
 
 await builder.Build().RunAsync();
