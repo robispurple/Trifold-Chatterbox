@@ -1,10 +1,9 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.6.5">
-
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.5" />
   <ItemGroup>
     <ProjectReference Include="..\Client.Spectre\Client.Spectre.csproj" />
     <ProjectReference Include="..\HubServer\HubServer.csproj" />
   </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -13,5 +12,4 @@
     <AspireUseCliBundle>true</AspireUseCliBundle>
     <UserSecretsId>e505463a-7f34-41f2-a438-ebc2abf117dc</UserSecretsId>
   </PropertyGroup>
-
 </Project>
