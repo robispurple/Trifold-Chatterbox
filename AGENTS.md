@@ -1,16 +1,16 @@
 # Trifold-Chatterbox
 
-A distributed real-time communication sandbox benchmarking three TUI architectures against a hybrid SignalR + gRPC .NET 10 backend orchestrated with .NET Aspire.
+A distributed real-time communication sandbox benchmarking three TUI architectures against a hybrid SignalR + gRPC .NET 11 backend orchestrated with .NET Aspire.
 
 For full developer workflows, setup, and container guides, see [README.md](README.md).
 
 ## Tech Stack & Language Conventions
 
-- **Platform:** .NET 10, C# 14
+- **Platform:** .NET 11, C# 15
 - **Language Rules:**
   - When generating new C# code, please follow the existing coding style.
-  - All code should be compatible with C# 14.0.
-  - Prefer new C# 14.0 features and syntax where applicable.
+  - All code should be compatible with C# 15.0.
+  - Prefer new C# 15.0 features and syntax where applicable.
   - Prefer functional programming paradigms and constructs where appropriate.
   - Prefer concise code over more verbose constructs.
 - **Coding Style:**

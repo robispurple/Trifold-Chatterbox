@@ -208,4 +208,4 @@ docker compose down
 Each `Client.Spectre` instance automatically names its OpenTelemetry service after its username (e.g. `Client.Spectre.Alice`, `Client.Spectre.Bob`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
 
 ### Hybrid Mode (Local AspireHost + Docker Clients)
-You can run `dotnet run --project src/AspireHost` on your host machine to get the full .NET 10 Aspire Dashboard, and then run `.\scripts\launch-terminals.ps1 -Docker`. The script will detect the local host backend and seamlessly connect the containerized clients via `host.docker.internal:5000`.
+You can run `dotnet run --project src/AspireHost` on your host machine to get the full .NET 11 Aspire Dashboard, and then run `.\scripts\launch-terminals.ps1 -Docker`. The script will detect the local host backend and seamlessly connect the containerized clients via `host.docker.internal:5000`.
