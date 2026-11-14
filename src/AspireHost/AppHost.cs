@@ -12,15 +12,28 @@ builder.AddProject<Projects.Client_Spectre>("client-spectre")
         executeCommand: _ =>
         {
             string scriptPath = Path.GetFullPath("../../scripts/launch-terminals.ps1");
+            string standardPwsh = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "PowerShell",
+                "7",
+                "pwsh.exe");
+            string fallbackPwsh = OperatingSystem.IsWindows() ? "pwsh.exe" : "pwsh";
+            string powershellPath = File.Exists(standardPwsh) ? standardPwsh : fallbackPwsh;
+
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "pwsh.exe",
-                Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                FileName = powershellPath,
                 UseShellExecute = false
             };
+            psi.ArgumentList.Add("-ExecutionPolicy");
+            psi.ArgumentList.Add("Bypass");
+            psi.ArgumentList.Add("-File");
+            psi.ArgumentList.Add(scriptPath);
+
             string userPath = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User) ?? "";
             string machinePath = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Machine) ?? "";
             psi.EnvironmentVariables["Path"] = $"{userPath};{machinePath}";
+
             System.Diagnostics.Process.Start(psi);
             return Task.FromResult(new ExecuteCommandResult { Success = true });
         },
