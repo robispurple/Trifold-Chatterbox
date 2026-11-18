@@ -6,7 +6,10 @@ using Microsoft.Extensions.Hosting;
 using ServiceDefaults;
 using Spectre.Console;
 
-var defaultUsername = Environment.GetEnvironmentVariable("CHAT_USERNAME") ?? $"User_{Random.Shared.Next(1000, 9999)}";
+var configuredUsername = Environment.GetEnvironmentVariable("CHAT_USERNAME");
+var defaultUsername = !string.IsNullOrWhiteSpace(configuredUsername)
+    ? configuredUsername
+    : $"User_{Random.Shared.Next(1000, 9999)}";
 if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME")))
 {
     Environment.SetEnvironmentVariable("OTEL_SERVICE_NAME", $"Client.Spectre.{defaultUsername}");
@@ -35,6 +38,10 @@ AnsiConsole.Write(new FigletText("Chatterbox").Color(Color.Green));
 AnsiConsole.MarkupLine("[bold grey]Spectre.Console TUI Client[/] - [dim]Connected via SignalR + gRPC[/]");
 AnsiConsole.MarkupLine($"[grey]Target Hub:[/] [underline blue]{chatHubUrl}[/]");
 AnsiConsole.MarkupLine($"[grey]Target gRPC:[/] [underline blue]{grpcBaseUrl}[/]\n");
+
+var username = (!Console.IsInputRedirected && string.IsNullOrWhiteSpace(configuredUsername))
+    ? AnsiConsole.Ask<string>("[bold]Enter your display name:[/] ", defaultUsername)
+    : defaultUsername;
 
 static void RenderMessage(string timestamp, string sender, string framework, string message)
 {
@@ -104,11 +111,8 @@ catch (Exception ex)
     AnsiConsole.MarkupLine($"[bold red]✕ Failed to connect to hub:[/] {Markup.Escape(ex.Message)}");
 }
 
-string username;
-
 if (!Console.IsInputRedirected)
 {
-    username = AnsiConsole.Ask<string>("[bold]Enter your display name:[/] ", defaultUsername);
     AnsiConsole.MarkupLine($"[dim]Welcome, [bold]{Markup.Escape(username)}[/]! Type a message and hit Enter. Type [red]/quit[/] to exit.[/]\n");
 
     while (true)
@@ -142,7 +146,6 @@ if (!Console.IsInputRedirected)
 }
 else
 {
-    username = defaultUsername;
     AnsiConsole.MarkupLine($"[dim]Non-interactive / background mode detected. Registered as [bold cyan]{Markup.Escape(username)}[/]. Listening for messages...[/]\n");
 
     var tcs = new TaskCompletionSource();
