@@ -65,9 +65,9 @@ if ($Docker) {
 
     [System.Diagnostics.Process]::Start($psi) | Out-Null
 } else {
-    $cmd1 = "dotnet run --project src/Client.Spectre -e CHAT_USERNAME=$($names[0])"
-    $cmd2 = "dotnet run --project src/Client.Spectre -e CHAT_USERNAME=$($names[1])"
-    $cmd3 = "dotnet run --project src/Client.Spectre -e CHAT_USERNAME=$($names[2])"
+    $cmd1 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[0])"
+    $cmd2 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[1])"
+    $cmd3 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[2])"
 
     $wtArgs = @(
         "-w", "0",

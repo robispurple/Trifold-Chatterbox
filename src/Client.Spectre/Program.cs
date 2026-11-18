@@ -1,3 +1,6 @@
+using Contracts;
+using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Hosting;
 using ServiceDefaults;
@@ -23,19 +26,18 @@ var hubBaseUrl = configuration["services:hubserver:http:0"]
     ?? "http://localhost:5000";
 
 var chatHubUrl = $"{hubBaseUrl.TrimEnd('/')}/chat";
+var grpcBaseUrl = configuration["services:hubserver:grpc:0"]
+    ?? configuration["services:hubserver:grpc"]
+    ?? configuration["GrpcServerUrl"]
+    ?? "http://localhost:5001";
 
 AnsiConsole.Write(new FigletText("Chatterbox").Color(Color.Green));
-AnsiConsole.MarkupLine("[bold grey]Spectre.Console TUI Client[/] - [dim]Connected via SignalR[/]");
-AnsiConsole.MarkupLine($"[grey]Target Hub:[/] [underline blue]{chatHubUrl}[/]\n");
+AnsiConsole.MarkupLine("[bold grey]Spectre.Console TUI Client[/] - [dim]Connected via SignalR + gRPC[/]");
+AnsiConsole.MarkupLine($"[grey]Target Hub:[/] [underline blue]{chatHubUrl}[/]");
+AnsiConsole.MarkupLine($"[grey]Target gRPC:[/] [underline blue]{grpcBaseUrl}[/]\n");
 
-var connection = new HubConnectionBuilder()
-    .WithUrl(chatHubUrl)
-    .WithAutomaticReconnect()
-    .Build();
-
-connection.On<string, string, string>("ReceiveMessage", (sender, framework, message) =>
+static void RenderMessage(string timestamp, string sender, string framework, string message)
 {
-    var timestamp = DateTime.Now.ToString("HH:mm:ss");
     var frameworkTag = framework switch
     {
         "Spectre" => "[green]Spectre[/]",
@@ -45,6 +47,33 @@ connection.On<string, string, string>("ReceiveMessage", (sender, framework, mess
     };
 
     AnsiConsole.MarkupLine($"[grey]{timestamp}[/] [[{frameworkTag}]] [bold cyan]{Markup.Escape(sender)}[/]: {Markup.Escape(message)}");
+}
+
+try
+{
+    using var channel = GrpcChannel.ForAddress(grpcBaseUrl);
+    var historyClient = new HistoryService.HistoryServiceClient(channel);
+    using var historyCall = historyClient.GetRecentMessages(new HistoryRequest { Limit = 50 });
+
+    await foreach (var item in historyCall.ResponseStream.ReadAllAsync())
+    {
+        var timestamp = DateTimeOffset.FromUnixTimeSeconds(item.TimestampUtc).ToLocalTime().ToString("HH:mm:ss");
+        RenderMessage(timestamp, item.Sender, item.Framework, item.Message);
+    }
+}
+catch (Exception ex)
+{
+    AnsiConsole.MarkupLine($"[bold yellow]⚠ Failed to load gRPC history:[/] {Markup.Escape(ex.Message)}");
+}
+
+var connection = new HubConnectionBuilder()
+    .WithUrl(chatHubUrl)
+    .WithAutomaticReconnect()
+    .Build();
+
+connection.On<string, string, string>("ReceiveMessage", (sender, framework, message) =>
+{
+    RenderMessage(DateTime.Now.ToString("HH:mm:ss"), sender, framework, message);
 });
 
 connection.Reconnecting += error =>

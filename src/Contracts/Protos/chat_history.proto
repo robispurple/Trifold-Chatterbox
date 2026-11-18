@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option csharp_namespace = "Contracts";
+
+package chathistory;
+
+service HistoryService {
+  rpc GetRecentMessages (HistoryRequest) returns (stream HistoryMessageResponse);
+}
+
+message HistoryRequest {
+  int32 limit = 1;
+}
+
+message HistoryMessageResponse {
+  string sender = 1;
+  string framework = 2;
+  string message = 3;
+  int64 timestamp_utc = 4;
+}

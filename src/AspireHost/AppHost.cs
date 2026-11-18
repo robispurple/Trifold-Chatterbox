@@ -1,6 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var hubServer = builder.AddProject<Projects.HubServer>("hubserver")
+    .WithEndpoint("http", e =>
+    {
+        e.Port = 5000;
+        e.TargetPort = 5000;
+        e.IsProxied = false;
+    })
+    .WithHttpEndpoint(port: 5001, targetPort: 5001, name: "grpc", isProxied: false)
     .WithExternalHttpEndpoints();
 
 builder.AddProject<Projects.Client_Spectre>("client-spectre")
