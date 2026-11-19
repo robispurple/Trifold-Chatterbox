@@ -43,6 +43,20 @@ var username = (!Console.IsInputRedirected && string.IsNullOrWhiteSpace(configur
     ? AnsiConsole.Ask<string>("[bold]Enter your display name:[/] ", defaultUsername)
     : defaultUsername;
 
+long lastSeenTimestampUtc = 0;
+
+void TrackTimestamp(long timestampUtc)
+{
+    long current;
+    while (timestampUtc > (current = Interlocked.Read(ref lastSeenTimestampUtc)))
+    {
+        if (Interlocked.CompareExchange(ref lastSeenTimestampUtc, timestampUtc, current) == current)
+        {
+            break;
+        }
+    }
+}
+
 static void RenderMessage(string timestamp, string sender, string framework, string message)
 {
     var frameworkTag = framework switch
@@ -56,30 +70,42 @@ static void RenderMessage(string timestamp, string sender, string framework, str
     AnsiConsole.MarkupLine($"[grey]{timestamp}[/] [[{frameworkTag}]] [bold cyan]{Markup.Escape(sender)}[/]: {Markup.Escape(message)}");
 }
 
-try
+async Task ReplayHistoryAsync(long sinceTimestampUtc)
 {
-    using var channel = GrpcChannel.ForAddress(grpcBaseUrl);
-    var historyClient = new HistoryService.HistoryServiceClient(channel);
-    using var historyCall = historyClient.GetRecentMessages(new HistoryRequest { Limit = 50 });
-
-    await foreach (var item in historyCall.ResponseStream.ReadAllAsync())
+    try
     {
-        var timestamp = DateTimeOffset.FromUnixTimeSeconds(item.TimestampUtc).ToLocalTime().ToString("HH:mm:ss");
-        RenderMessage(timestamp, item.Sender, item.Framework, item.Message);
+        using var channel = GrpcChannel.ForAddress(grpcBaseUrl);
+        var historyClient = new HistoryService.HistoryServiceClient(channel);
+        using var historyCall = historyClient.GetRecentMessages(new HistoryRequest { Limit = 50 });
+
+        await foreach (var item in historyCall.ResponseStream.ReadAllAsync())
+        {
+            if (item.TimestampUtc <= sinceTimestampUtc)
+            {
+                continue;
+            }
+
+            TrackTimestamp(item.TimestampUtc);
+            var timestamp = DateTimeOffset.FromUnixTimeSeconds(item.TimestampUtc).ToLocalTime().ToString("HH:mm:ss");
+            RenderMessage(timestamp, item.Sender, item.Framework, item.Message);
+        }
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[bold yellow]⚠ Failed to load gRPC history:[/] {Markup.Escape(ex.Message)}");
     }
 }
-catch (Exception ex)
-{
-    AnsiConsole.MarkupLine($"[bold yellow]⚠ Failed to load gRPC history:[/] {Markup.Escape(ex.Message)}");
-}
+
+await ReplayHistoryAsync(sinceTimestampUtc: 0);
 
 var connection = new HubConnectionBuilder()
     .WithUrl(chatHubUrl)
-    .WithAutomaticReconnect()
+    .WithAutomaticReconnect(new InfiniteRetryPolicy())
     .Build();
 
 connection.On<string, string, string>("ReceiveMessage", (sender, framework, message) =>
 {
+    TrackTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
     RenderMessage(DateTime.Now.ToString("HH:mm:ss"), sender, framework, message);
 });
 
@@ -90,14 +116,14 @@ connection.On<string>("SystemNotice", message =>
 
 connection.Reconnecting += error =>
 {
-    AnsiConsole.MarkupLine("[bold yellow]⚠ Reconnecting to SignalR Hub...[/]");
+    AnsiConsole.MarkupLine($"[bold yellow]⚠ Connection lost ({Markup.Escape(error?.Message ?? "unknown")}). Reconnecting to SignalR Hub...[/]");
     return Task.CompletedTask;
 };
 
-connection.Reconnected += connectionId =>
+connection.Reconnected += async connectionId =>
 {
-    AnsiConsole.MarkupLine("[bold green]✓ Reconnected to SignalR Hub.[/]");
-    return Task.CompletedTask;
+    AnsiConsole.MarkupLine($"[bold green]✓ Reconnected to SignalR Hub[/] [dim](id: {Markup.Escape(connectionId ?? "n/a")})[/] — [dim]rehydrating missed history...[/]");
+    await ReplayHistoryAsync(Interlocked.Read(ref lastSeenTimestampUtc));
 };
 
 connection.Closed += error =>
@@ -166,3 +192,27 @@ else
 
 await connection.StopAsync();
 await host.StopAsync();
+
+sealed class InfiniteRetryPolicy : IRetryPolicy
+{
+    #region Methods
+
+    public TimeSpan? NextRetryDelay(RetryContext retryContext) =>
+        retryContext.PreviousRetryCount < Delays.Length
+            ? Delays[retryContext.PreviousRetryCount]
+            : Delays[^1];
+
+    #endregion
+
+    #region Fields
+
+    private static readonly TimeSpan[] Delays =
+    [
+        TimeSpan.Zero,
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10)
+    ];
+
+    #endregion
+}
