@@ -1,6 +1,7 @@
 using HubServer.Hubs;
 using HubServer.Services;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.SignalR;
 using ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,12 +19,23 @@ builder.AddServiceDefaults();
 builder.Services.AddSignalR();
 builder.Services.AddGrpc();
 builder.Services.AddSingleton<HistoryServiceImpl>();
+builder.Services.AddHostedService<ServerHeartbeatService>();
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
-app.MapHub<ChatHub>("/chat");
 app.MapGrpcService<HistoryServiceImpl>();
+app.MapHub<ChatHub>("/chat");
+app.MapPost("/announce", async (string message, IHubContext<ChatHub> hubContext) =>
+{
+    await hubContext.Clients.All.SendAsync("SystemNotice", message);
+    return Results.Ok(new { sent = message });
+});
+app.MapPost("/announce", async (string message, IHubContext<ChatHub> hubContext) =>
+{
+    await hubContext.Clients.All.SendAsync("SystemNotice", message);
+    return Results.Ok(new { sent = message });
+});
 
 await app.RunAsync();
 

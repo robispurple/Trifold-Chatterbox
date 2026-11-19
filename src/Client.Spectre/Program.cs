@@ -83,6 +83,11 @@ connection.On<string, string, string>("ReceiveMessage", (sender, framework, mess
     RenderMessage(DateTime.Now.ToString("HH:mm:ss"), sender, framework, message);
 });
 
+connection.On<string>("SystemNotice", message =>
+{
+    AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] [bold magenta][[SERVER]][/] {Markup.Escape(message)}");
+});
+
 connection.Reconnecting += error =>
 {
     AnsiConsole.MarkupLine("[bold yellow]⚠ Reconnecting to SignalR Hub...[/]");
