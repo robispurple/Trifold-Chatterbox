@@ -1,5 +1,7 @@
 param (
-    [switch]$Docker
+    [switch]$Docker,
+    [ValidateSet("Spectre", "TerminalGui", "Mixed")]
+    [string]$Client = "Spectre"
 )
 
 # 1. Refresh PATH in this process before spawning Windows Terminal
@@ -8,17 +10,61 @@ $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTa
 $env:Path = "$userPath;$machinePath"
 
 $rootDir = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$names = @("Alice", "Bob", "Charlie")
+
+$clientMetadata = @{
+    Spectre = @{
+        Type       = "Spectre"
+        Project    = "src/Client.Spectre"
+        Service    = "client-spectre"
+        Image      = "trifold/client-spectre:latest"
+        OtelPrefix = "Client.Spectre"
+    }
+    TerminalGui = @{
+        Type       = "TerminalGui"
+        Project    = "src/Client.TerminalGui"
+        Service    = "client-terminalgui"
+        Image      = "trifold/client-terminalgui:latest"
+        OtelPrefix = "Client.TerminalGui"
+    }
+}
+
+$paneSpecs = switch ($Client) {
+    "Spectre" {
+        @(
+            @{ Name = "Alice";   Client = $clientMetadata["Spectre"] },
+            @{ Name = "Bob";     Client = $clientMetadata["Spectre"] },
+            @{ Name = "Charlie"; Client = $clientMetadata["Spectre"] }
+        )
+    }
+    "TerminalGui" {
+        @(
+            @{ Name = "Alice";   Client = $clientMetadata["TerminalGui"] },
+            @{ Name = "Bob";     Client = $clientMetadata["TerminalGui"] },
+            @{ Name = "Charlie"; Client = $clientMetadata["TerminalGui"] }
+        )
+    }
+    "Mixed" {
+        @(
+            @{ Name = "Alice";   Client = $clientMetadata["Spectre"] },
+            @{ Name = "Bob";     Client = $clientMetadata["TerminalGui"] },
+            @{ Name = "Charlie"; Client = $clientMetadata["Spectre"] }
+        )
+    }
+}
+
+$commands = @()
 
 if ($Docker) {
     Write-Host "Cleaning up previous client containers..." -ForegroundColor Yellow
     docker ps -a -q --filter "name=chatterbox-client-" | ForEach-Object { docker rm -f $_ } 2>$null
     docker ps -a -q --filter "ancestor=trifold/client-spectre:latest" | ForEach-Object { docker rm -f $_ } 2>$null
+    docker ps -a -q --filter "ancestor=trifold/client-terminalgui:latest" | ForEach-Object { docker rm -f $_ } 2>$null
 
     # Check if a local HubServer / AspireHost is running on host port 5000
     $hubUrl = "http://host.docker.internal:5000"
+    $grpcUrl = "http://host.docker.internal:5001"
     $otlpUrl = "http://host.docker.internal:19071"
-    
+
     # Check if container chatterbox-hubserver is running or start it if no local HubServer
     $runningHubContainer = docker ps -q --filter "name=chatterbox-hubserver"
     if (-not $runningHubContainer) {
@@ -28,62 +74,48 @@ if ($Docker) {
             Write-Host "Starting Docker HubServer backend & Aspire Dashboard..." -ForegroundColor Cyan
             docker compose -f "$rootDir\docker-compose.yml" up -d hubserver aspire-dashboard
             $hubUrl = "http://hubserver:8080"
+            $grpcUrl = "http://hubserver:8080"
             $otlpUrl = "http://aspire-dashboard:18889"
         } else {
             Write-Host "Detected local AspireHost / HubServer on host port 5000. Connecting containers via host.docker.internal..." -ForegroundColor Green
         }
     } else {
         $hubUrl = "http://hubserver:8080"
+        $grpcUrl = "http://hubserver:8080"
         $otlpUrl = "http://aspire-dashboard:18889"
     }
 
-    if ($hubUrl -like "*hubserver:8080*") {
-        $cmd1 = "docker compose run --rm --name chatterbox-client-alice -e CHAT_USERNAME=$($names[0]) client-spectre"
-        $cmd2 = "docker compose run --rm --name chatterbox-client-bob -e CHAT_USERNAME=$($names[1]) client-spectre"
-        $cmd3 = "docker compose run --rm --name chatterbox-client-charlie -e CHAT_USERNAME=$($names[2]) client-spectre"
-    } else {
-        $cmd1 = "docker run --rm -it --name chatterbox-client-alice --add-host=host.docker.internal:host-gateway -e HubServerUrl=$hubUrl -e OTEL_EXPORTER_OTLP_ENDPOINT=$otlpUrl -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc -e OTEL_SERVICE_NAME=Client.Spectre.Alice -e CHAT_USERNAME=$($names[0]) trifold/client-spectre:latest"
-        $cmd2 = "docker run --rm -it --name chatterbox-client-bob --add-host=host.docker.internal:host-gateway -e HubServerUrl=$hubUrl -e OTEL_EXPORTER_OTLP_ENDPOINT=$otlpUrl -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc -e OTEL_SERVICE_NAME=Client.Spectre.Bob -e CHAT_USERNAME=$($names[1]) trifold/client-spectre:latest"
-        $cmd3 = "docker run --rm -it --name chatterbox-client-charlie --add-host=host.docker.internal:host-gateway -e HubServerUrl=$hubUrl -e OTEL_EXPORTER_OTLP_ENDPOINT=$otlpUrl -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc -e OTEL_SERVICE_NAME=Client.Spectre.Charlie -e CHAT_USERNAME=$($names[2]) trifold/client-spectre:latest"
+    foreach ($spec in $paneSpecs) {
+        $name = $spec.Name
+        $containerName = "chatterbox-client-$($name.ToLowerInvariant())"
+        $otelName = "$($spec.Client.OtelPrefix).$name"
+
+        if ($hubUrl -like "*hubserver:8080*") {
+            $commands += "docker compose run --rm --name $containerName -e CHAT_USERNAME=$name -e OTEL_SERVICE_NAME=$otelName $($spec.Client.Service)"
+        } else {
+            $commands += "docker run --rm -it --name $containerName --add-host=host.docker.internal:host-gateway -e HubServerUrl=$hubUrl -e GrpcServerUrl=$grpcUrl -e OTEL_EXPORTER_OTLP_ENDPOINT=$otlpUrl -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc -e OTEL_SERVICE_NAME=$otelName -e CHAT_USERNAME=$name $($spec.Client.Image)"
+        }
     }
-
-    $wtArgs = @(
-        "-w", "0",
-        "new-tab", "-d", $rootDir, "--title", "Client 1 ($($names[0]))", "pwsh", "-NoExit", "-Command", $cmd1,
-        ";",
-        "split-pane", "-H", "-d", $rootDir, "--title", "Client 2 ($($names[1]))", "pwsh", "-NoExit", "-Command", $cmd2,
-        ";",
-        "split-pane", "-V", "-d", $rootDir, "--title", "Client 3 ($($names[2]))", "pwsh", "-NoExit", "-Command", $cmd3
-    )
-
-    $psi = [System.Diagnostics.ProcessStartInfo]::new("wt.exe")
-    foreach ($arg in $wtArgs) {
-        $psi.ArgumentList.Add($arg)
-    }
-    $psi.UseShellExecute = $false
-    $psi.EnvironmentVariables["Path"] = $env:Path
-
-    [System.Diagnostics.Process]::Start($psi) | Out-Null
 } else {
-    $cmd1 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[0])"
-    $cmd2 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[1])"
-    $cmd3 = "dotnet run --no-build --project src/Client.Spectre -e CHAT_USERNAME=$($names[2])"
-
-    $wtArgs = @(
-        "-w", "0",
-        "new-tab", "-d", $rootDir, "--title", "Client 1 ($($names[0]))", "pwsh", "-NoExit", "-Command", $cmd1,
-        ";",
-        "split-pane", "-H", "-d", $rootDir, "--title", "Client 2 ($($names[1]))", "pwsh", "-NoExit", "-Command", $cmd2,
-        ";",
-        "split-pane", "-V", "-d", $rootDir, "--title", "Client 3 ($($names[2]))", "pwsh", "-NoExit", "-Command", $cmd3
-    )
-
-    $psi = [System.Diagnostics.ProcessStartInfo]::new("wt.exe")
-    foreach ($arg in $wtArgs) {
-        $psi.ArgumentList.Add($arg)
+    foreach ($spec in $paneSpecs) {
+        $commands += "dotnet run --no-build --project $($spec.Client.Project) -e CHAT_USERNAME=$($spec.Name)"
     }
-    $psi.UseShellExecute = $false
-    $psi.EnvironmentVariables["Path"] = $env:Path
-
-    [System.Diagnostics.Process]::Start($psi) | Out-Null
 }
+
+$wtArgs = @(
+    "-w", "0",
+    "new-tab", "-d", $rootDir, "--title", "Client 1 ($($paneSpecs[0].Name) - $($paneSpecs[0].Client.Type))", "pwsh", "-NoExit", "-Command", $commands[0],
+    ";",
+    "split-pane", "-H", "-d", $rootDir, "--title", "Client 2 ($($paneSpecs[1].Name) - $($paneSpecs[1].Client.Type))", "pwsh", "-NoExit", "-Command", $commands[1],
+    ";",
+    "split-pane", "-V", "-d", $rootDir, "--title", "Client 3 ($($paneSpecs[2].Name) - $($paneSpecs[2].Client.Type))", "pwsh", "-NoExit", "-Command", $commands[2]
+)
+
+$psi = [System.Diagnostics.ProcessStartInfo]::new("wt.exe")
+foreach ($arg in $wtArgs) {
+    $psi.ArgumentList.Add($arg)
+}
+$psi.UseShellExecute = $false
+$psi.EnvironmentVariables["Path"] = $env:Path
+
+[System.Diagnostics.Process]::Start($psi) | Out-Null

@@ -23,5 +23,6 @@
     <PackageVersion Include="Grpc.Tools" Version="2.71.0" />
     <!-- TUI Frameworks -->
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
+    <PackageVersion Include="Terminal.Gui" Version="2.6.0" />
   </ItemGroup>
 </Project>

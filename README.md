@@ -71,7 +71,7 @@ winget install Microsoft.Aspire
 
 ### 1. Aspire Orchestrator (Recommended for Local Dev)
 
-Runs the full distributed stack (`HubServer` and `Client.Spectre`) with automatic service discovery and the Aspire OpenTelemetry dashboard:
+Runs the full distributed stack (`HubServer`, `Client.Spectre`, and `Client.TerminalGui`) with automatic service discovery and the Aspire OpenTelemetry dashboard:
 
 ```pwsh
 # Launch with .NET CLI
@@ -83,17 +83,21 @@ aspire start
 
 ### 2. Multi-Client 3-Terminal Sandbox (One-Command Testing)
 
-To immediately launch **3 interactive Spectre.Console clients** side-by-side in Windows Terminal (`Alice`, `Bob`, and `Charlie`) connected to the hub:
+To immediately launch **3 interactive clients** side-by-side in Windows Terminal (`Alice`, `Bob`, and `Charlie`) connected to the hub, use `-Client` (`Spectre` [default], `TerminalGui`, or `Mixed`):
 
 ```pwsh
 # Native .NET Mode (connects to running Aspire or HubServer):
-.\scripts\launch-terminals.ps1
+.\scripts\launch-terminals.ps1                        # 3x Client.Spectre (default)
+.\scripts\launch-terminals.ps1 -Client TerminalGui    # 3x Client.TerminalGui
+.\scripts\launch-terminals.ps1 -Client Mixed          # Alice & Charlie (Spectre) + Bob (TerminalGui)
 
 # Docker Container Mode (runs 3 docker containers connected over chatterbox-net):
 .\scripts\launch-terminals.ps1 -Docker
+.\scripts\launch-terminals.ps1 -Docker -Client TerminalGui
+.\scripts\launch-terminals.ps1 -Docker -Client Mixed
 ```
 
-*Tip: When running `AspireHost`, you can also click the **"Launch 3 Interactive Terminals"** button directly on the `client-spectre` resource in the Aspire Web Dashboard!*
+*Tip: When running `AspireHost`, you can also click **"Launch 3 Interactive Terminals"** on `client-spectre` or **"Launch 3 Terminal.Gui Terminals"** / **"Launch 3 Mixed Terminals"** on `client-terminalgui` in the Aspire Web Dashboard!*
 
 ---
 
@@ -113,11 +117,17 @@ dotnet run --project src/HubServer
 dotnet run --project src/Client.Spectre
 ```
 
+**Terminal 3 — Client.TerminalGui:**
+
+```pwsh
+dotnet run --project src/Client.TerminalGui
+```
+
 ---
 
 ## Running in Docker Containers
 
-Both `HubServer` and `Client.Spectre` are configured with .NET built-in container support (`Microsoft.NET.Build.Containers`) and Docker Compose. `ServiceDefaults` is compiled directly into both applications.
+`HubServer`, `Client.Spectre`, and `Client.TerminalGui` are configured with .NET built-in container support (`Microsoft.NET.Build.Containers`) and Docker Compose. `ServiceDefaults` and `Contracts` are compiled directly into the applications.
 
 ### 1. Build Container Images
 
@@ -137,6 +147,9 @@ dotnet publish src/HubServer/HubServer.csproj -t:PublishContainer
 
 # Build Client.Spectre container image (trifold/client-spectre:latest)
 dotnet publish src/Client.Spectre/Client.Spectre.csproj -t:PublishContainer
+
+# Build Client.TerminalGui container image (trifold/client-terminalgui:latest)
+dotnet publish src/Client.TerminalGui/Client.TerminalGui.csproj -t:PublishContainer
 ```
 
 ---
@@ -151,14 +164,16 @@ docker compose up -d
 
 ---
 
-### 3. Interacting with the Spectre.Console TUI Client in Docker
+### 3. Interacting with the TUI Clients in Docker
 
-Because `Client.Spectre` is an interactive console application:
+Because `Client.Spectre` and `Client.TerminalGui` are interactive console applications:
 
 **Method 1 — Launch a dedicated interactive TUI session (Recommended):**
 
 ```pwsh
 docker compose run --rm client-spectre
+# Or for Terminal.Gui:
+docker compose run --rm client-terminalgui
 ```
 
 **Method 2 — Attach to the background client container:**
@@ -166,6 +181,8 @@ docker compose run --rm client-spectre
 ```pwsh
 # Attach directly to the running container's TTY and STDIN
 docker attach chatterbox-client-spectre
+# Or for Terminal.Gui:
+docker attach chatterbox-client-terminalgui
 ```
 
 *(To detach without stopping the container, press `Ctrl+P`, then `Ctrl+Q`)*
@@ -174,6 +191,8 @@ docker attach chatterbox-client-spectre
 
 ```pwsh
 docker exec -it chatterbox-client-spectre dotnet Client.Spectre.dll
+# Or for Terminal.Gui:
+docker exec -it chatterbox-client-terminalgui dotnet Client.TerminalGui.dll
 ```
 
 ---
@@ -205,7 +224,7 @@ docker compose down
 ```
 
 ### Telemetry Differentiation in Aspire Dashboard
-Each `Client.Spectre` instance automatically names its OpenTelemetry service after its username (e.g. `Client.Spectre.Alice`, `Client.Spectre.Bob`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
+Each client instance automatically names its OpenTelemetry service after its framework and username (e.g. `Client.Spectre.Alice`, `Client.TerminalGui.Bob`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
 
 ### Hybrid Mode (Local AspireHost + Docker Clients)
 You can run `dotnet run --project src/AspireHost` on your host machine to get the full .NET 11 Aspire Dashboard, and then run `.\scripts\launch-terminals.ps1 -Docker`. The script will detect the local host backend and seamlessly connect the containerized clients via `host.docker.internal:5000`.

@@ -114,6 +114,26 @@ connection.On<string>("SystemNotice", message =>
     AnsiConsole.MarkupLine($"[grey]{DateTime.Now:HH:mm:ss}[/] [bold magenta][[SERVER]][/] {Markup.Escape(message)}");
 });
 
+connection.On<string, long>("ServerHeartbeat", (uptime, timestampUtc) =>
+{
+    if (Console.IsOutputRedirected)
+    {
+        return;
+    }
+
+    var localTime = DateTimeOffset.FromUnixTimeSeconds(timestampUtc).ToLocalTime();
+    try
+    {
+        Console.Title = $"Chatterbox ({username}) | ♥ {uptime} ({localTime:HH:mm:ss})";
+    }
+    catch (IOException)
+    {
+    }
+    catch (PlatformNotSupportedException)
+    {
+    }
+});
+
 connection.Reconnecting += error =>
 {
     AnsiConsole.MarkupLine($"[bold yellow]⚠ Connection lost ({Markup.Escape(error?.Message ?? "unknown")}). Reconnecting to SignalR Hub...[/]");

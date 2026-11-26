@@ -15,8 +15,9 @@ public class ServerHeartbeatService(IHubContext<ChatHub> hubContext) : Backgroun
         {
             var uptime = DateTimeOffset.UtcNow - startedAt;
             await hubContext.Clients.All.SendAsync(
-                "SystemNotice",
-                $"Server heartbeat — uptime {uptime:hh\\:mm\\:ss}",
+                "ServerHeartbeat",
+                $"{uptime:hh\\:mm\\:ss}",
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 stoppingToken);
         }
     }

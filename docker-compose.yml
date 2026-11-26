@@ -22,9 +22,11 @@ services:
         FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
         WORKDIR /src
         COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/Contracts/Contracts.csproj", "src/Contracts/"]
         COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
         COPY ["src/HubServer/HubServer.csproj", "src/HubServer/"]
         RUN dotnet restore "src/HubServer/HubServer.csproj"
+        COPY src/Contracts/ src/Contracts/
         COPY src/ServiceDefaults/ src/ServiceDefaults/
         COPY src/HubServer/ src/HubServer/
         RUN dotnet publish "src/HubServer/HubServer.csproj" -c Release -o /app/publish
@@ -57,9 +59,11 @@ services:
         FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
         WORKDIR /src
         COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/Contracts/Contracts.csproj", "src/Contracts/"]
         COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
         COPY ["src/Client.Spectre/Client.Spectre.csproj", "src/Client.Spectre/"]
         RUN dotnet restore "src/Client.Spectre/Client.Spectre.csproj"
+        COPY src/Contracts/ src/Contracts/
         COPY src/ServiceDefaults/ src/ServiceDefaults/
         COPY src/Client.Spectre/ src/Client.Spectre/
         RUN dotnet publish "src/Client.Spectre/Client.Spectre.csproj" -c Release -o /app/publish
@@ -75,6 +79,43 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - HubServerUrl=http://hubserver:8080
       - OTEL_SERVICE_NAME=Client.Spectre
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      - hubserver
+      - aspire-dashboard
+    networks:
+      - chatterbox-net
+
+  client-terminalgui:
+    image: trifold/client-terminalgui:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/Contracts/Contracts.csproj", "src/Contracts/"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/Client.TerminalGui/Client.TerminalGui.csproj", "src/Client.TerminalGui/"]
+        RUN dotnet restore "src/Client.TerminalGui/Client.TerminalGui.csproj"
+        COPY src/Contracts/ src/Contracts/
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/Client.TerminalGui/ src/Client.TerminalGui/
+        RUN dotnet publish "src/Client.TerminalGui/Client.TerminalGui.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENTRYPOINT ["dotnet", "Client.TerminalGui.dll"]
+    container_name: chatterbox-client-terminalgui
+    stdin_open: true
+    tty: true
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - HubServerUrl=http://hubserver:8080
+      - GrpcServerUrl=http://hubserver:8080
+      - OTEL_SERVICE_NAME=Client.TerminalGui
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:
