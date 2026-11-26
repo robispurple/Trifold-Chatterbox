@@ -70,4 +70,18 @@ builder.AddProject<Projects.Client_TerminalGui>("client-terminalgui")
         executeCommand: _ => Task.FromResult(LaunchTerminals("Mixed")),
         commandOptions: terminalCommandOptions);
 
+builder.AddProject<Projects.Client_Jumbee>("client-jumbee")
+    .WithReference(hubServer)
+    .WaitFor(hubServer)
+    .WithCommand(
+        name: "launch-3-jumbee-terminals",
+        displayName: "Launch 3 Jumbee Terminals",
+        executeCommand: _ => Task.FromResult(LaunchTerminals("Jumbee")),
+        commandOptions: terminalCommandOptions)
+    .WithCommand(
+        name: "launch-3-mixed-terminals",
+        displayName: "Launch 3 Mixed Terminals",
+        executeCommand: _ => Task.FromResult(LaunchTerminals("Mixed")),
+        commandOptions: terminalCommandOptions);
+
 await builder.Build().RunAsync();

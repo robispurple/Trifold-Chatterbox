@@ -36,6 +36,7 @@ services:
         COPY --from=build /app/publish .
         ENV ASPNETCORE_HTTP_PORTS=8080
         EXPOSE 8080
+        EXPOSE 5001
         ENTRYPOINT ["dotnet", "HubServer.dll"]
     container_name: chatterbox-hubserver
     ports:
@@ -78,6 +79,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - HubServerUrl=http://hubserver:8080
+      - GrpcServerUrl=http://hubserver:5001
       - OTEL_SERVICE_NAME=Client.Spectre
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -114,8 +116,45 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - HubServerUrl=http://hubserver:8080
-      - GrpcServerUrl=http://hubserver:8080
+      - GrpcServerUrl=http://hubserver:5001
       - OTEL_SERVICE_NAME=Client.TerminalGui
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+    depends_on:
+      - hubserver
+      - aspire-dashboard
+    networks:
+      - chatterbox-net
+
+  client-jumbee:
+    image: trifold/client-jumbee:latest
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
+        WORKDIR /src
+        COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+        COPY ["src/Contracts/Contracts.csproj", "src/Contracts/"]
+        COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+        COPY ["src/Client.Jumbee/Client.Jumbee.csproj", "src/Client.Jumbee/"]
+        RUN dotnet restore "src/Client.Jumbee/Client.Jumbee.csproj"
+        COPY src/Contracts/ src/Contracts/
+        COPY src/ServiceDefaults/ src/ServiceDefaults/
+        COPY src/Client.Jumbee/ src/Client.Jumbee/
+        RUN dotnet publish "src/Client.Jumbee/Client.Jumbee.csproj" -c Release -o /app/publish
+
+        FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
+        WORKDIR /app
+        COPY --from=build /app/publish .
+        ENTRYPOINT ["dotnet", "Client.Jumbee.dll"]
+    container_name: chatterbox-client-jumbee
+    stdin_open: true
+    tty: true
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - HubServerUrl=http://hubserver:8080
+      - GrpcServerUrl=http://hubserver:5001
+      - OTEL_SERVICE_NAME=Client.Jumbee
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://aspire-dashboard:18889
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     depends_on:

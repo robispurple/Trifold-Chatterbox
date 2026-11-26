@@ -1,6 +1,6 @@
 param (
     [switch]$Docker,
-    [ValidateSet("Spectre", "TerminalGui", "Mixed")]
+    [ValidateSet("Spectre", "TerminalGui", "Jumbee", "Mixed")]
     [string]$Client = "Spectre"
 )
 
@@ -26,6 +26,13 @@ $clientMetadata = @{
         Image      = "trifold/client-terminalgui:latest"
         OtelPrefix = "Client.TerminalGui"
     }
+    Jumbee = @{
+        Type       = "Jumbee"
+        Project    = "src/Client.Jumbee"
+        Service    = "client-jumbee"
+        Image      = "trifold/client-jumbee:latest"
+        OtelPrefix = "Client.Jumbee"
+    }
 }
 
 $paneSpecs = switch ($Client) {
@@ -43,11 +50,18 @@ $paneSpecs = switch ($Client) {
             @{ Name = "Charlie"; Client = $clientMetadata["TerminalGui"] }
         )
     }
+    "Jumbee" {
+        @(
+            @{ Name = "Alice";   Client = $clientMetadata["Jumbee"] },
+            @{ Name = "Bob";     Client = $clientMetadata["Jumbee"] },
+            @{ Name = "Charlie"; Client = $clientMetadata["Jumbee"] }
+        )
+    }
     "Mixed" {
         @(
             @{ Name = "Alice";   Client = $clientMetadata["Spectre"] },
             @{ Name = "Bob";     Client = $clientMetadata["TerminalGui"] },
-            @{ Name = "Charlie"; Client = $clientMetadata["Spectre"] }
+            @{ Name = "Charlie"; Client = $clientMetadata["Jumbee"] }
         )
     }
 }
@@ -59,6 +73,7 @@ if ($Docker) {
     docker ps -a -q --filter "name=chatterbox-client-" | ForEach-Object { docker rm -f $_ } 2>$null
     docker ps -a -q --filter "ancestor=trifold/client-spectre:latest" | ForEach-Object { docker rm -f $_ } 2>$null
     docker ps -a -q --filter "ancestor=trifold/client-terminalgui:latest" | ForEach-Object { docker rm -f $_ } 2>$null
+    docker ps -a -q --filter "ancestor=trifold/client-jumbee:latest" | ForEach-Object { docker rm -f $_ } 2>$null
 
     # Check if a local HubServer / AspireHost is running on host port 5000
     $hubUrl = "http://host.docker.internal:5000"
@@ -74,14 +89,14 @@ if ($Docker) {
             Write-Host "Starting Docker HubServer backend & Aspire Dashboard..." -ForegroundColor Cyan
             docker compose -f "$rootDir\docker-compose.yml" up -d hubserver aspire-dashboard
             $hubUrl = "http://hubserver:8080"
-            $grpcUrl = "http://hubserver:8080"
+            $grpcUrl = "http://hubserver:5001"
             $otlpUrl = "http://aspire-dashboard:18889"
         } else {
             Write-Host "Detected local AspireHost / HubServer on host port 5000. Connecting containers via host.docker.internal..." -ForegroundColor Green
         }
     } else {
         $hubUrl = "http://hubserver:8080"
-        $grpcUrl = "http://hubserver:8080"
+        $grpcUrl = "http://hubserver:5001"
         $otlpUrl = "http://aspire-dashboard:18889"
     }
 

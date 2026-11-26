@@ -71,7 +71,7 @@ winget install Microsoft.Aspire
 
 ### 1. Aspire Orchestrator (Recommended for Local Dev)
 
-Runs the full distributed stack (`HubServer`, `Client.Spectre`, and `Client.TerminalGui`) with automatic service discovery and the Aspire OpenTelemetry dashboard:
+Runs the full distributed stack (`HubServer`, `Client.Spectre`, `Client.TerminalGui`, and `Client.Jumbee`) with automatic service discovery and the Aspire OpenTelemetry dashboard:
 
 ```pwsh
 # Launch with .NET CLI
@@ -83,21 +83,23 @@ aspire start
 
 ### 2. Multi-Client 3-Terminal Sandbox (One-Command Testing)
 
-To immediately launch **3 interactive clients** side-by-side in Windows Terminal (`Alice`, `Bob`, and `Charlie`) connected to the hub, use `-Client` (`Spectre` [default], `TerminalGui`, or `Mixed`):
+To immediately launch **3 interactive clients** side-by-side in Windows Terminal (`Alice`, `Bob`, and `Charlie`) connected to the hub, use `-Client` (`Spectre` [default], `TerminalGui`, `Jumbee`, or `Mixed`):
 
 ```pwsh
 # Native .NET Mode (connects to running Aspire or HubServer):
 .\scripts\launch-terminals.ps1                        # 3x Client.Spectre (default)
 .\scripts\launch-terminals.ps1 -Client TerminalGui    # 3x Client.TerminalGui
-.\scripts\launch-terminals.ps1 -Client Mixed          # Alice & Charlie (Spectre) + Bob (TerminalGui)
+.\scripts\launch-terminals.ps1 -Client Jumbee         # 3x Client.Jumbee
+.\scripts\launch-terminals.ps1 -Client Mixed          # Alice (Spectre) + Bob (TerminalGui) + Charlie (Jumbee)
 
 # Docker Container Mode (runs 3 docker containers connected over chatterbox-net):
 .\scripts\launch-terminals.ps1 -Docker
 .\scripts\launch-terminals.ps1 -Docker -Client TerminalGui
+.\scripts\launch-terminals.ps1 -Docker -Client Jumbee
 .\scripts\launch-terminals.ps1 -Docker -Client Mixed
 ```
 
-*Tip: When running `AspireHost`, you can also click **"Launch 3 Interactive Terminals"** on `client-spectre` or **"Launch 3 Terminal.Gui Terminals"** / **"Launch 3 Mixed Terminals"** on `client-terminalgui` in the Aspire Web Dashboard!*
+*Tip: When running `AspireHost`, you can also click **"Launch 3 Interactive Terminals"** on `client-spectre`, **"Launch 3 Terminal.Gui Terminals"** / **"Launch 3 Mixed Terminals"** on `client-terminalgui`, or **"Launch 3 Jumbee Terminals"** / **"Launch 3 Mixed Terminals"** on `client-jumbee` in the Aspire Web Dashboard!*
 
 ---
 
@@ -123,11 +125,17 @@ dotnet run --project src/Client.Spectre
 dotnet run --project src/Client.TerminalGui
 ```
 
+**Terminal 4 — Client.Jumbee:**
+
+```pwsh
+dotnet run --project src/Client.Jumbee
+```
+
 ---
 
 ## Running in Docker Containers
 
-`HubServer`, `Client.Spectre`, and `Client.TerminalGui` are configured with .NET built-in container support (`Microsoft.NET.Build.Containers`) and Docker Compose. `ServiceDefaults` and `Contracts` are compiled directly into the applications.
+`HubServer`, `Client.Spectre`, `Client.TerminalGui`, and `Client.Jumbee` are configured with .NET built-in container support (`Microsoft.NET.Build.Containers`) and Docker Compose. `ServiceDefaults` and `Contracts` are compiled directly into the applications.
 
 ### 1. Build Container Images
 
@@ -150,6 +158,9 @@ dotnet publish src/Client.Spectre/Client.Spectre.csproj -t:PublishContainer
 
 # Build Client.TerminalGui container image (trifold/client-terminalgui:latest)
 dotnet publish src/Client.TerminalGui/Client.TerminalGui.csproj -t:PublishContainer
+
+# Build Client.Jumbee container image (trifold/client-jumbee:latest)
+dotnet publish src/Client.Jumbee/Client.Jumbee.csproj -t:PublishContainer
 ```
 
 ---
@@ -166,7 +177,7 @@ docker compose up -d
 
 ### 3. Interacting with the TUI Clients in Docker
 
-Because `Client.Spectre` and `Client.TerminalGui` are interactive console applications:
+Because `Client.Spectre`, `Client.TerminalGui`, and `Client.Jumbee` are interactive console applications:
 
 **Method 1 — Launch a dedicated interactive TUI session (Recommended):**
 
@@ -174,6 +185,8 @@ Because `Client.Spectre` and `Client.TerminalGui` are interactive console applic
 docker compose run --rm client-spectre
 # Or for Terminal.Gui:
 docker compose run --rm client-terminalgui
+# Or for Jumbee.Console:
+docker compose run --rm client-jumbee
 ```
 
 **Method 2 — Attach to the background client container:**
@@ -183,6 +196,8 @@ docker compose run --rm client-terminalgui
 docker attach chatterbox-client-spectre
 # Or for Terminal.Gui:
 docker attach chatterbox-client-terminalgui
+# Or for Jumbee.Console:
+docker attach chatterbox-client-jumbee
 ```
 
 *(To detach without stopping the container, press `Ctrl+P`, then `Ctrl+Q`)*
@@ -193,6 +208,8 @@ docker attach chatterbox-client-terminalgui
 docker exec -it chatterbox-client-spectre dotnet Client.Spectre.dll
 # Or for Terminal.Gui:
 docker exec -it chatterbox-client-terminalgui dotnet Client.TerminalGui.dll
+# Or for Jumbee.Console:
+docker exec -it chatterbox-client-jumbee dotnet Client.Jumbee.dll
 ```
 
 ---
@@ -224,7 +241,7 @@ docker compose down
 ```
 
 ### Telemetry Differentiation in Aspire Dashboard
-Each client instance automatically names its OpenTelemetry service after its framework and username (e.g. `Client.Spectre.Alice`, `Client.TerminalGui.Bob`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
+Each client instance automatically names its OpenTelemetry service after its framework and username (e.g. `Client.Spectre.Alice`, `Client.TerminalGui.Bob`, `Client.Jumbee.Charlie`). In the Aspire Dashboard, you can filter traces, structured logs, and metrics by individual user clients from the resource dropdown.
 
 ### Hybrid Mode (Local AspireHost + Docker Clients)
 You can run `dotnet run --project src/AspireHost` on your host machine to get the full .NET 11 Aspire Dashboard, and then run `.\scripts\launch-terminals.ps1 -Docker`. The script will detect the local host backend and seamlessly connect the containerized clients via `host.docker.internal:5000`.

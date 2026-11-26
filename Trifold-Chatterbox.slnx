@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/AspireHost/AspireHost.csproj" />
+    <Project Path="src/Client.Jumbee/Client.Jumbee.csproj" />
     <Project Path="src/Client.Spectre/Client.Spectre.csproj" />
     <Project Path="src/Client.TerminalGui/Client.TerminalGui.csproj" />
     <Project Path="src/Contracts/Contracts.csproj" />

@@ -1,5 +1,6 @@
 <Project Sdk="Aspire.AppHost.Sdk/17.0.0">
   <ItemGroup>
+    <ProjectReference Include="..\Client.Jumbee\Client.Jumbee.csproj" />
     <ProjectReference Include="..\Client.Spectre\Client.Spectre.csproj" />
     <ProjectReference Include="..\Client.TerminalGui\Client.TerminalGui.csproj" />
     <ProjectReference Include="..\HubServer\HubServer.csproj" />
