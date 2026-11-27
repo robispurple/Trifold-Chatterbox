@@ -65,6 +65,12 @@ If Mise has issues with Aspire, install via Winget:
 winget install Microsoft.Aspire
 ```
 
+Restore local .NET CLI tools (`dotnet-repl` and `csharprepl`):
+
+```pwsh
+dotnet tool restore
+```
+
 ---
 
 ## Running the Applications
@@ -130,6 +136,93 @@ dotnet run --project src/Client.TerminalGui
 ```pwsh
 dotnet run --project src/Client.Jumbee
 ```
+
+---
+
+### 4. Interactive REPL Diagnostics (`dotnet-repl` & `CSharpRepl`)
+
+Trifold-Chatterbox configures two complementary .NET REPL tools in [.config/dotnet-tools.json](.config/dotnet-tools.json) (`dotnet tool restore`), each tailored to a distinct workflow:
+
+| Capability | `dotnet-repl` ([repl/chat-session.csx](repl/chat-session.csx)) | `CSharpRepl` ([repl/live-inspect.csx](repl/live-inspect.csx)) |
+| --- | --- | --- |
+| **Primary Strength** | Out-of-process protocol probing, polyglot scripting & CI assertions | In-process live attachment, DI inspection, direct state/hub calls & rich standalone C# REPL |
+| **Target Coupling** | None — black-box client over SignalR, gRPC, and HTTP | Opt-in local dev startup hooks via `csharprepl connect init` |
+| **Live Memory & DI Access** | No — observes only public endpoints | Yes — exposes `services` (`IServiceProvider`) and `Get<T>()` inside the live process |
+| **Runtime Method Detours** | No | Supported on `.NET 10` and earlier (`#wrap`, `#replace`, `#revert`); CoreCLR `11.0.0` is not yet supported by `MonoMod.RuntimeDetour` in `0.9.2` |
+| **Scripting & CI Export** | C#, F#, PowerShell, HTTP; `.csx`/`.dib`/`.ipynb`; `--exit-after-run` & `--output-format trx\|ipynb` | C# only; syntax highlighting, IntelliSense, `-r *.csproj`, `--eval`, `--eval-file` |
+| **Remote / Docker Targets** | Yes — works against native, Aspire, or Docker stacks | Local PID attach only (`connect`); standalone mode works anywhere |
+
+**When to Use Which:**
+- Use **`dotnet-repl`** when testing external contracts as a real client: replaying gRPC history, stress-testing the TUI clients with `SendBurstAsync(10)`, running automated round-trip smoke assertions (`REPL_ASSERT=true`), or probing Docker containers.
+- Use **`CSharpRepl`** when debugging inside a running `HubServer` process: reading `HistoryServiceImpl` memory without network calls, mutating state directly (`InjectHistory`), pushing broadcasts via `IHubContext<ChatHub>`, or exploring solution types standalone (`dotnet csharprepl -r src/Contracts/Contracts.csproj`).
+
+#### Workflow A: Out-of-Process Protocol Probing (`dotnet-repl`)
+
+Start `HubServer` (or `AspireHost`), then launch the probing script:
+
+```pwsh
+dotnet repl --run repl/chat-session.csx
+```
+
+Inside the interactive C# prompt, call the preloaded helpers:
+
+```csharp
+await SendAsync("Hello from REPL!")
+await SendBurstAsync(10)
+await GetHistoryAsync(20)
+await AnnounceAsync("Maintenance in 5 minutes")
+await AssertRoundTripAsync()
+await CheckHealthAsync()
+Help()
+```
+
+Run the non-interactive smoke-test and assertion suite (exiting `0` on pass, non-zero on failure):
+
+```pwsh
+$env:REPL_ASSERT="true"; dotnet repl --run repl/chat-session.csx --exit-after-run
+```
+
+Optional environment variable overrides:
+- `HubServerUrl` (default `http://localhost:5000`)
+- `GrpcServerUrl` (default `http://localhost:5001`)
+- `CHAT_USERNAME` (default `ReplProbe`)
+- `REPL_FRAMEWORK` (default `REPL`)
+
+#### Workflow B: Live In-Process Debugging (`CSharpRepl`)
+
+1. Start `HubServer` with the local development startup hooks enabled:
+
+```pwsh
+.\repl\start-hub-attachable.ps1
+```
+
+2. In a second terminal, list attachable processes and attach to `HubServer`'s PID with [repl/live-inspect.csx](repl/live-inspect.csx) preloaded:
+
+```pwsh
+dotnet csharprepl connect list
+dotnet csharprepl connect <PID> repl/live-inspect.csx
+```
+
+*(Tip: Pass `repl/live-inspect.csx` on the CLI so `CSharpRepl` loads it from your repo root. Expression return values display directly in `CSharpRepl`, whereas `Console.WriteLine` prints in `HubServer`'s stdout.)*
+
+3. Inspect live DI singletons and invoke hub/history methods in-process:
+
+```csharp
+InspectEnvironment()
+DumpHistory()
+InjectHistory("Added directly in-process")
+await BroadcastNoticeAsync("Notice sent straight via DI")
+await BroadcastChatAsync("Live broadcast from CSharpRepl!")
+Get<HubServer.Services.HistoryServiceImpl>().Count
+```
+
+4. You can also launch `CSharpRepl` standalone against project assemblies without attaching:
+
+```pwsh
+dotnet csharprepl -r src/Contracts/Contracts.csproj
+```
+
+> **Development Only:** `csharprepl connect` injects a Roslyn scripting engine into the target process with full execution privileges. Never set `DOTNET_STARTUP_HOOKS` or `ASPNETCORE_HOSTINGSTARTUPASSEMBLIES` in production or globally. Note also that `#wrap` / `#replace` method detours in `CSharpRepl 0.9.2` target `.NET 10` and earlier and currently report `CoreCLR version 11.0.0 is not supported` on `.NET 11`.
 
 ---
 
@@ -226,6 +319,8 @@ docker compose down
 
 - **Build solution:** `dotnet build`
 - **Run tests:** `dotnet test`
+- **REPL smoke test (`dotnet-repl`):** `$env:REPL_ASSERT="true"; dotnet repl --run repl/chat-session.csx --exit-after-run` (against a running `HubServer`)
+- **Live REPL attach (`CSharpRepl`):** `.\repl\start-hub-attachable.ps1`, then `dotnet csharprepl connect list` and `dotnet csharprepl connect <PID> repl/live-inspect.csx`
 - **Check HubServer Health:** `curl http://localhost:5000/alive` (or `http://localhost:5000/health`)
 - **Aspire Telemetry:** Check the Aspire dashboard URL printed upon `dotnet run --project src/AspireHost` for live traces, metrics, and structured logs.
 

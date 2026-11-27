@@ -31,11 +31,6 @@ app.MapPost("/announce", async (string message, IHubContext<ChatHub> hubContext)
     await hubContext.Clients.All.SendAsync("SystemNotice", message);
     return Results.Ok(new { sent = message });
 });
-app.MapPost("/announce", async (string message, IHubContext<ChatHub> hubContext) =>
-{
-    await hubContext.Clients.All.SendAsync("SystemNotice", message);
-    return Results.Ok(new { sent = message });
-});
 
 await app.RunAsync();
 

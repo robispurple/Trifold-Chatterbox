@@ -6,7 +6,15 @@ using Grpc.Core;
 
 public class HistoryServiceImpl : HistoryService.HistoryServiceBase
 {
+    #region Properties
+
+    public int Count => historyQueue.Count;
+
+    #endregion
+
     #region Methods
+
+    public IReadOnlyList<HistoryMessageResponse> GetSnapshot() => [.. historyQueue];
 
     public void AddMessage(string sender, string framework, string message)
     {
