@@ -324,6 +324,49 @@ docker compose down
 - **Check HubServer Health:** `curl http://localhost:5000/alive` (or `http://localhost:5000/health`)
 - **Aspire Telemetry:** Check the Aspire dashboard URL printed upon `dotnet run --project src/AspireHost` for live traces, metrics, and structured logs.
 
+### Hermetic Integration Testing (Testcontainers)
+
+The [tests/IntegrationTests](tests/IntegrationTests/IntegrationTests.csproj) suite uses **Testcontainers** and **xUnit v3** on .NET 11 **Microsoft.Testing.Platform (MTP)** to spin up ephemeral `HubServer` containers—no pre-running Aspire or Docker Compose stack required.
+
+**Prerequisites:**
+- **Docker Desktop** or **Docker Engine** must be running so Testcontainers can build and start containers.
+
+**Running the Suite (.NET 11 MTP):**
+
+> On .NET 11 with `"runner": "Microsoft.Testing.Platform"` in [global.json](global.json), pass MTP/xUnit v3 flags directly to `dotnet test` (do **not** use a `--` separator).
+
+```pwsh
+# Run all tests across the solution
+dotnet test
+
+# Run only the Testcontainers integration suite
+dotnet test --project tests/IntegrationTests/IntegrationTests.csproj
+
+# Discover tests without executing them
+dotnet test --project tests/IntegrationTests/IntegrationTests.csproj --list-tests
+
+# Filter by test class or xUnit trait
+dotnet test --project tests/IntegrationTests/IntegrationTests.csproj --filter-class *HubIntegrationTests
+dotnet test --project tests/IntegrationTests/IntegrationTests.csproj --filter-trait "Category=Integration"
+```
+
+**Reusing a Prebuilt Image (`HUBSERVER_TEST_IMAGE`):**
+
+By default, the fixture builds `src/HubServer/Dockerfile` once per test run. To skip the Docker build and reuse an existing image (for example, `trifold/hubserver:latest` built via `docker compose build` or `dotnet publish`):
+
+```pwsh
+$env:HUBSERVER_TEST_IMAGE="trifold/hubserver:latest"
+dotnet test --project tests/IntegrationTests/IntegrationTests.csproj
+Remove-Item Env:HUBSERVER_TEST_IMAGE
+```
+
+**Covered Scenarios:**
+- **Health Probes:** `GET /alive` and `GET /health` readiness and liveness responses.
+- **SignalR Fan-Out & Burst Load:** Multi-client (`Spectre`, `TerminalGui`, `Jumbee`) live broadcast delivery and concurrent burst stress without dropped messages.
+- **gRPC History Replay, Limits & Eviction:** Cold-start empty history, `GetRecentMessages` ordering and `Limit` slicing, and circular buffer eviction (`MaxHistoryCount = 100`).
+- **Protocol Coexistence Under Load:** Late-joining gRPC history replay followed by SignalR subscription, alongside concurrent HTTP/2 gRPC reads and HTTP/1.1 WebSocket bursts.
+- **System Announcements:** `POST /announce` HTTP response and `SystemNotice` SignalR broadcast delivery.
+
 ---
 
 ## Troubleshooting & Tips

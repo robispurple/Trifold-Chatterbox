@@ -8,4 +8,7 @@
     <Project Path="src/HubServer/HubServer.csproj" />
     <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
+  </Folder>
 </Solution>
